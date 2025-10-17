@@ -67,7 +67,10 @@ impl CurrencyCode {
 
     pub fn extract_currency(value: &str) -> Option<&'static str> {
         let upper = value.to_uppercase();
-        CURRENCY_CODES.iter().find(|code| upper.contains(**code)).copied()
+        CURRENCY_CODES
+            .iter()
+            .find(|code| upper.contains(**code))
+            .copied()
     }
 
     pub fn exclude_currency(value: &str) -> String {

@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use serde::{Deserialize, Serialize};
 
 use crate::models::common::Transformation;
@@ -17,8 +17,12 @@ pub struct BoundingBox {
 
 impl BoundingBox {
     pub fn from_floorplan(floorplan: &Floorplan) -> Result<Self> {
-        let inner_points: Vec<&Transformation> = floorplan
+        let rooms = floorplan
             .rooms
+            .as_ref()
+            .ok_or_else(|| anyhow!("Floorplan rooms are missing"))?;
+
+        let inner_points: Vec<&Transformation> = rooms
             .iter()
             .flat_map(|room| room.inner_points.iter())
             .collect();
@@ -31,7 +35,12 @@ impl BoundingBox {
     }
 
     pub fn from_room(floorplan: &Floorplan, room: &Room) -> Result<Self> {
-        if !floorplan.rooms.contains(room) {
+        let rooms = floorplan
+            .rooms
+            .as_ref()
+            .ok_or_else(|| anyhow!("Floorplan rooms are missing"))?;
+
+        if !rooms.contains(room) {
             return Err(anyhow!("Room is not part of the provided floorplan"));
         }
 
@@ -45,17 +54,13 @@ impl BoundingBox {
 }
 
 fn compute_bounding_box(points: &[&Transformation]) -> Result<BoundingBox> {
-    let xs: Vec<f64> = points
-        .iter()
-        .filter_map(|p| p.x)
-        .collect();
-    let zs: Vec<f64> = points
-        .iter()
-        .filter_map(|p| p.z)
-        .collect();
+    let xs: Vec<f64> = points.iter().filter_map(|p| p.x).collect();
+    let zs: Vec<f64> = points.iter().filter_map(|p| p.z).collect();
 
     if xs.is_empty() || zs.is_empty() {
-        return Err(anyhow!("Unable to compute bounding box without coordinates"));
+        return Err(anyhow!(
+            "Unable to compute bounding box without coordinates"
+        ));
     }
 
     let min_x = xs

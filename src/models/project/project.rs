@@ -1,3 +1,4 @@
+use bson::{self, DateTime as BsonDateTime};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
@@ -42,28 +43,33 @@ pub struct Project {
     #[serde(default)]
     pub is_on_air: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub created_at: Option<DateTime<Utc>>,
+    pub created_at: Option<BsonDateTime>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub updated_at: Option<DateTime<Utc>>,
+    pub updated_at: Option<BsonDateTime>,
 }
 
 impl Project {
     pub fn mark_created(&mut self) {
         let now = Utc::now();
-        self.created_at = Some(now);
-        self.updated_at = Some(now);
+        let bson_now = BsonDateTime::from_chrono(now);
+        self.created_at = Some(bson_now.clone());
+        self.updated_at = Some(bson_now);
     }
 
     pub fn touch(&mut self) {
-        self.updated_at = Some(Utc::now());
+        self.updated_at = Some(BsonDateTime::from_chrono(Utc::now()));
     }
 
     pub fn set_default_cover_image(&mut self, value: Option<String>) {
-        self.default_cover_image = value.map(|v| v.trim().to_string()).filter(|v| !v.is_empty());
+        self.default_cover_image = value
+            .map(|v| v.trim().to_string())
+            .filter(|v| !v.is_empty());
     }
 
     pub fn set_name(&mut self, value: Option<String>) {
-        self.name = value.map(|v| v.trim().to_string()).filter(|v| !v.is_empty());
+        self.name = value
+            .map(|v| v.trim().to_string())
+            .filter(|v| !v.is_empty());
     }
 
     pub fn floorplan_key(&self) -> Option<String> {

@@ -39,30 +39,30 @@ pub struct Floorplan {
     pub area: Option<f64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub dimensions: Option<Dimension>,
-    #[serde(default)]
-    pub corners: Vec<Corner>,
-    #[serde(default)]
-    pub walls: Vec<Wall>,
-    #[serde(default)]
-    pub points: Vec<Point>,
-    #[serde(default)]
-    pub lines: Vec<Line>,
-    #[serde(default)]
-    pub rooms: Vec<Room>,
-    #[serde(default)]
-    pub items: Vec<Item>,
-    #[serde(default)]
-    pub finish_items: Vec<FinishItem>,
-    #[serde(default)]
-    pub groups: Vec<Group>,
-    #[serde(default)]
-    pub columns: Vec<Column>,
-    #[serde(default)]
-    pub groups_v2: Vec<GroupV2>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub corners: Option<Vec<Corner>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub walls: Option<Vec<Wall>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub points: Option<Vec<Point>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lines: Option<Vec<Line>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rooms: Option<Vec<Room>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub items: Option<Vec<Item>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub finish_items: Option<Vec<FinishItem>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub groups: Option<Vec<Group>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub columns: Option<Vec<Column>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub groups_v2: Option<Vec<GroupV2>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub light: Option<Value>,
-    #[serde(default)]
-    pub light_sources: Vec<LightSource>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub light_sources: Option<Vec<LightSource>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub dxf_url: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -82,18 +82,18 @@ impl Floorplan {
             fp_image_scale: None,
             area: None,
             dimensions: None,
-            corners: Vec::new(),
-            walls: Vec::new(),
-            points: Vec::new(),
-            lines: Vec::new(),
-            rooms: Vec::new(),
-            items: Vec::new(),
-            finish_items: Vec::new(),
-            groups: Vec::new(),
-            columns: Vec::new(),
-            groups_v2: Vec::new(),
+            corners: Some(Vec::new()),
+            walls: Some(Vec::new()),
+            points: Some(Vec::new()),
+            lines: Some(Vec::new()),
+            rooms: Some(Vec::new()),
+            items: Some(Vec::new()),
+            finish_items: Some(Vec::new()),
+            groups: Some(Vec::new()),
+            columns: Some(Vec::new()),
+            groups_v2: Some(Vec::new()),
             light: None,
-            light_sources: Vec::new(),
+            light_sources: Some(Vec::new()),
             dxf_url: None,
             created_at: None,
             updated_at: None,
@@ -108,14 +108,6 @@ impl Floorplan {
 
     pub fn touch(&mut self) {
         self.updated_at = Some(Utc::now());
-    }
-
-    pub fn limited_items(&self) -> &[Item] {
-        if self.items.len() > 3000 {
-            &self.items[..3000]
-        } else {
-            &self.items
-        }
     }
 }
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -139,7 +131,8 @@ pub struct Dimension {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Corner {
-    pub archi_id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub archi_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub position: Option<Transformation>,
 }
@@ -149,16 +142,19 @@ pub struct Corner {
 pub struct Wall {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub archi_id: Option<String>,
-    #[serde(default)]
-    pub corners: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub corners: Option<Vec<String>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub height: Option<f64>,
-    #[serde(default = "wall_default_level", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default = "wall_default_level",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub level: Option<f64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub thickness: Option<f64>,
-    #[serde(default)]
-    pub finishes: Vec<Finish>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub finishes: Option<Vec<Finish>>,
 }
 
 fn wall_default_level() -> Option<f64> {
@@ -168,8 +164,10 @@ fn wall_default_level() -> Option<f64> {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Point {
-    pub archi_id: String,
-    pub position: Position2D,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub archi_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub position: Option<Position2D>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -202,7 +200,10 @@ pub struct Room {
     pub corners: Vec<String>,
     #[serde(default = "room_default_height")]
     pub height: f64,
-    #[serde(default = "room_default_level", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default = "room_default_level",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub level: Option<f64>,
     #[serde(default)]
     pub label: String,
@@ -218,7 +219,10 @@ pub struct Room {
     pub inner_points: Vec<Transformation>,
     #[serde(default)]
     pub lock: bool,
-    #[serde(default = "room_default_visible", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default = "room_default_visible",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub visible: Option<bool>,
     #[serde(default)]
     pub items: Vec<Item>,
@@ -245,7 +249,10 @@ pub struct Finish {
     pub id: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub product_id: Option<String>,
-    #[serde(default = "default_finish_color", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default = "default_finish_color",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub color: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub meta: Option<Value>,
@@ -366,8 +373,8 @@ pub struct Item {
     pub visible: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ext: Option<Value>,
-    #[serde(default)]
-    pub components: Vec<ItemComponent>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub components: Option<Vec<ItemComponent>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub custom_path: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -447,8 +454,8 @@ pub struct Group {
     pub published: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub inbound_box: Option<Dimension>,
-    #[serde(default)]
-    pub member: Vec<Member>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub member: Option<Vec<Member>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub relation_products: Option<RelationProduct>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -509,10 +516,12 @@ pub struct AssemblyGroupInfo {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Member {
-    pub product_id: String,
-    pub archi_id: String,
-    #[serde(default)]
-    pub matrix: Vec<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub product_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub archi_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub matrix: Option<Vec<f64>>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -731,8 +740,8 @@ pub struct LightSource {
     pub id: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
-    #[serde(default)]
-    pub items: Vec<Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub items: Option<Vec<Value>>,
 }
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -806,9 +815,17 @@ pub struct SurfaceLineProperties {
     pub light_trough: Option<SurfaceLightTrough>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub moldings: Option<Vec<SurfaceMolding>>,
-    #[serde(rename = "isInitialShape", default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "isInitialShape",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub is_initial_shape: Option<bool>,
-    #[serde(rename = "isInitialHole", default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "isInitialHole",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub is_initial_hole: Option<bool>,
 }
 

@@ -1,0 +1,15 @@
+[package]
+name = "similar-project"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+axum = "0.8.6"
+tokio = { version = "1.48.0", features = ["macros", "rt", "rt-multi-thread", "signal", "net", "time", "fs", "sync"] }
+sea-orm = { version = "1.1.17", features = ["sqlx-postgres", "runtime-tokio-native-tls", "macros", "with-uuid", "with-chrono"] }
+serde = { version = "1.0.228", features = ["derive"] }
+tracing = "0.1.41"
+tracing-subscriber = { version = "0.3.20", features = ["env-filter", "fmt"] }
+dotenvy = "0.15.7"
+anyhow = "1.0.100"
+thiserror = "2.0.17"

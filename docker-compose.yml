@@ -1,0 +1,14 @@
+version: "3"
+services:
+  postgres:
+    image: postgres:18-alpine
+    container_name: similar_project-rust.postgres
+    ports:
+      - "5432:5432" 
+    restart: always
+    environment:
+      POSTGRES_USER: archisketch
+      POSTGRES_PASSWORD: archisketch
+      POSTGRES_DB: archisketch_db
+    volumes:
+      - "./docker/postgres:/var/lib/postgresql/18/docker" # Data path changed after Postgresql 18

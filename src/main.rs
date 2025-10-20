@@ -13,6 +13,7 @@ use aws_config::{BehaviorVersion, meta::region::RegionProviderChain};
 use aws_sdk_s3::Client as S3Client;
 use aws_types::region::Region;
 use axum::Router;
+use migration::{Migrator, MigratorTrait};
 use mongodb::Client as MongoClient;
 use reqwest::Client as HttpClient;
 use routes::app_router;
@@ -25,7 +26,10 @@ async fn main() -> anyhow::Result<()> {
     let _ = dotenvy::dotenv();
 
     tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| "trace".into()))
+        .with_env_filter(
+            EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| "info,sea_orm=warn,sqlx=warn".into()),
+        )
         .with_target(false)
         .compact()
         .init();
@@ -40,7 +44,12 @@ async fn main() -> anyhow::Result<()> {
     };
 
     let postgres = if let Some(url) = &config.database_url {
-        Some(Database::connect(url).await?)
+        let connection = Database::connect(url).await?;
+        if let Err(err) = Migrator::up(&connection, None).await {
+            tracing::error!("failed to apply migrations: {err}");
+            return Err(err.into());
+        }
+        Some(connection)
     } else {
         None
     };

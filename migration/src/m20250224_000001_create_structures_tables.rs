@@ -1,0 +1,163 @@
+use sea_orm_migration::prelude::*;
+
+#[derive(DeriveMigrationName)]
+pub struct Migration;
+
+#[async_trait::async_trait]
+impl MigrationTrait for Migration {
+    async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        manager
+            .create_table(
+                Table::create()
+                    .table(FloorStructures::Table)
+                    .if_not_exists()
+                    .col(
+                        ColumnDef::new(FloorStructures::Id)
+                            .string()
+                            .not_null()
+                            .primary_key(),
+                    )
+                    .col(ColumnDef::new(FloorStructures::Title).string().not_null())
+                    .col(
+                        ColumnDef::new(FloorStructures::ProjectId)
+                            .string()
+                            .not_null(),
+                    )
+                    .col(ColumnDef::new(FloorStructures::Area).double().not_null())
+                    .col(
+                        ColumnDef::new(FloorStructures::BoundingBoxWidth)
+                            .double()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(FloorStructures::BoundingBoxHeight)
+                            .double()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(FloorStructures::BoundingBoxArea)
+                            .double()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(FloorStructures::BoundingBoxAspect)
+                            .double()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(FloorStructures::BoundingBoxAspectRi)
+                            .double()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(FloorStructures::Rectangularity)
+                            .double()
+                            .not_null(),
+                    )
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_table(
+                Table::create()
+                    .table(RoomStructures::Table)
+                    .if_not_exists()
+                    .col(
+                        ColumnDef::new(RoomStructures::Id)
+                            .string()
+                            .not_null()
+                            .primary_key(),
+                    )
+                    .col(
+                        ColumnDef::new(RoomStructures::ProjectId)
+                            .string()
+                            .not_null(),
+                    )
+                    .col(ColumnDef::new(RoomStructures::Type).integer().not_null())
+                    .col(ColumnDef::new(RoomStructures::Area).double().not_null())
+                    .col(
+                        ColumnDef::new(RoomStructures::BoundingBoxWidth)
+                            .double()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(RoomStructures::BoundingBoxHeight)
+                            .double()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(RoomStructures::BoundingBoxArea)
+                            .double()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(RoomStructures::BoundingBoxAspect)
+                            .double()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(RoomStructures::BoundingBoxAspectRi)
+                            .double()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(RoomStructures::Rectangularity)
+                            .double()
+                            .not_null(),
+                    )
+                    .to_owned(),
+            )
+            .await
+    }
+
+    async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        manager
+            .drop_table(
+                Table::drop()
+                    .table(RoomStructures::Table)
+                    .if_exists()
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .drop_table(
+                Table::drop()
+                    .table(FloorStructures::Table)
+                    .if_exists()
+                    .to_owned(),
+            )
+            .await
+    }
+}
+
+#[derive(DeriveIden)]
+enum FloorStructures {
+    Table,
+    Id,
+    Title,
+    ProjectId,
+    Area,
+    BoundingBoxWidth,
+    BoundingBoxHeight,
+    BoundingBoxArea,
+    BoundingBoxAspect,
+    BoundingBoxAspectRi,
+    Rectangularity,
+}
+
+#[derive(DeriveIden)]
+enum RoomStructures {
+    Table,
+    Id,
+    ProjectId,
+    Type,
+    Area,
+    BoundingBoxWidth,
+    BoundingBoxHeight,
+    BoundingBoxArea,
+    BoundingBoxAspect,
+    BoundingBoxAspectRi,
+    Rectangularity,
+}

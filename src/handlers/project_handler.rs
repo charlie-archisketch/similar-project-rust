@@ -207,7 +207,7 @@ fn build_floor_structure_records(
             .map_err(ApiError::internal)?;
 
         let rectangularity = if bounding_box.area > 0.0 {
-            area / bounding_box.area
+            area * 1_000_000.0 / bounding_box.area
         } else {
             0.0
         };

@@ -12,12 +12,12 @@ use crate::{
     models::project::{
         Project,
         child::{floorplan::Floorplan, structure::BoundingBox},
-        response::ProjectResponse,
     },
     repositories::{
         floor_structure_repository::FloorStructureRecord, project_repository::ProjectRepository,
         room_structure_repository::RoomStructureRecord,
     },
+    routes::project::dto::ProjectResponse,
     state::AppState,
 };
 

@@ -1,7 +1,6 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
 
 pub struct AppConfig {
-    pub database_url: String,
     pub port: u16,
     pub mongodb_uri: Option<String>,
     pub mongodb_db: String,
@@ -12,8 +11,6 @@ pub struct AppConfig {
 
 impl AppConfig {
     pub fn load() -> Result<Self> {
-        let database_url = std::env::var("DATABASE_URL")
-            .context("Missing env var DATABASE_URL (e.g., postgres connection string)")?;
         let port = std::env::var("PORT")
             .ok()
             .and_then(|port| port.parse::<u16>().ok())
@@ -27,7 +24,6 @@ impl AppConfig {
             .unwrap_or_else(|_| "https://dev-resources.archisketch.com".to_string());
 
         Ok(Self {
-            database_url,
             port,
             mongodb_uri,
             mongodb_db,

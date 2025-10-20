@@ -16,7 +16,6 @@ use axum::Router;
 use mongodb::Client as MongoClient;
 use reqwest::Client as HttpClient;
 use routes::app_router;
-use sea_orm::Database;
 use state::AppState;
 use tracing_subscriber::EnvFilter;
 
@@ -31,8 +30,6 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     let config = config::AppConfig::load()?;
-
-    let db = Database::connect(&config.database_url).await?;
 
     let mongo = if let Some(uri) = &config.mongodb_uri {
         let client = MongoClient::with_uri_str(uri).await?;
@@ -58,12 +55,10 @@ async fn main() -> anyhow::Result<()> {
 
     let project_repository = mongo
         .as_ref()
-        .map(|mongo_db| repositories::project_repository::ProjectRepository::new(mongo_db));
+        .map(repositories::project_repository::ProjectRepository::new);
     let http_client = HttpClient::new();
 
     let state: AppState = AppState {
-        db,
-        mongo,
         project_repository,
         s3_client,
         s3_bucket: config.s3_bucket_name.clone(),

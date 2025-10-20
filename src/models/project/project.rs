@@ -1,4 +1,4 @@
-use bson::{self, DateTime as BsonDateTime};
+use bson::DateTime as BsonDateTime;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
@@ -52,7 +52,7 @@ impl Project {
     pub fn mark_created(&mut self) {
         let now = Utc::now();
         let bson_now = BsonDateTime::from_chrono(now);
-        self.created_at = Some(bson_now.clone());
+        self.created_at = Some(bson_now);
         self.updated_at = Some(bson_now);
     }
 

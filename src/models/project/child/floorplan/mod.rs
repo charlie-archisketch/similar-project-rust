@@ -1,3 +1,3 @@
-pub mod floorplan;
+mod floorplan;
 
 pub use floorplan::*;

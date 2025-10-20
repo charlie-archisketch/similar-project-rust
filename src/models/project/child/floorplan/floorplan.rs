@@ -7,7 +7,7 @@ use serde_json::Value;
 use uuid::Uuid;
 
 use crate::models::common::Transformation;
-use crate::models::material::material::{Color, Texture, Vector2};
+use crate::models::material::{Color, Texture, Vector2};
 use crate::models::project::enums::{ColumnType, FinishTargetType};
 
 use crate::models::project::child::portfolio::Price;

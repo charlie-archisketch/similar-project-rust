@@ -1,15 +1,10 @@
 use anyhow::anyhow;
 use aws_sdk_s3::Client as S3Client;
-use mongodb::Database as MongoDatabase;
 use reqwest::Client as HttpClient;
-use sea_orm::DatabaseConnection;
-
 use crate::{error::ApiError, repositories::project_repository::ProjectRepository};
 
 #[derive(Clone)]
 pub struct AppState {
-    pub db: DatabaseConnection,
-    pub mongo: Option<MongoDatabase>,
     pub project_repository: Option<ProjectRepository>,
     pub s3_client: Option<S3Client>,
     pub s3_bucket: Option<String>,

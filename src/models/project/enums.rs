@@ -1,17 +1,12 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub enum ShowFloorplan {
+    #[default]
     None,
     TwoD,
     ThreeD,
-}
-
-impl Default for ShowFloorplan {
-    fn default() -> Self {
-        ShowFloorplan::None
-    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

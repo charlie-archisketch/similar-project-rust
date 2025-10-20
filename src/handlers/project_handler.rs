@@ -138,12 +138,13 @@ async fn ensure_default_cover_image(
 
     if project.default_cover_image.is_none() {
         project.default_cover_image = Some(cover_image);
-        if let Some(project_id) = project.id.clone() {
-            if let Some(default_image) = project.default_cover_image.clone() {
-                repository
-                    .persist_default_cover_image(&project_id, &default_image)
-                    .await?;
-            }
+        if let (Some(project_id), Some(default_image)) = (
+            project.id.as_deref(),
+            project.default_cover_image.as_deref(),
+        ) {
+            repository
+                .persist_default_cover_image(project_id, default_image)
+                .await?;
         }
     }
 

@@ -2,9 +2,10 @@ use serde::{Deserialize, Serialize};
 
 const CURRENCY_CODES: &[&str] = &["KRW", "USD", "EUR", "JPY", "GBP", "CNY", "VND", "TWD"];
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize, Default)]
 #[allow(clippy::upper_case_acronyms)]
 pub enum CurrencyCode {
+    #[default]
     #[serde(rename = "KRW")]
     KRW,
     #[serde(rename = "USD")]
@@ -21,12 +22,6 @@ pub enum CurrencyCode {
     VND,
     #[serde(rename = "TWD")]
     TWD,
-}
-
-impl Default for CurrencyCode {
-    fn default() -> Self {
-        CurrencyCode::KRW
-    }
 }
 
 impl CurrencyCode {

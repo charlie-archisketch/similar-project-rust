@@ -16,6 +16,7 @@ use axum::Router;
 use mongodb::Client as MongoClient;
 use reqwest::Client as HttpClient;
 use routes::app_router;
+use sea_orm::Database;
 use state::AppState;
 use tracing_subscriber::EnvFilter;
 
@@ -38,6 +39,12 @@ async fn main() -> anyhow::Result<()> {
         None
     };
 
+    let postgres = if let Some(url) = &config.database_url {
+        Some(Database::connect(url).await?)
+    } else {
+        None
+    };
+
     let s3_client = if config.s3_bucket_name.is_some() {
         let region_provider = if let Some(region) = &config.aws_region {
             RegionProviderChain::first_try(Region::new(region.clone())).or_default_provider()
@@ -56,10 +63,17 @@ async fn main() -> anyhow::Result<()> {
     let project_repository = mongo
         .as_ref()
         .map(repositories::project_repository::ProjectRepository::new);
+    let floor_structure_repository = postgres
+        .clone()
+        .map(repositories::floor_structure_repository::FloorStructureRepository::new);
+    let room_structure_repository =
+        postgres.map(repositories::room_structure_repository::RoomStructureRepository::new);
     let http_client = HttpClient::new();
 
     let state: AppState = AppState {
         project_repository,
+        floor_structure_repository,
+        room_structure_repository,
         s3_client,
         s3_bucket: config.s3_bucket_name.clone(),
         cdn_base_url: config.cdn_url.clone(),

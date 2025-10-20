@@ -4,6 +4,7 @@ pub struct AppConfig {
     pub port: u16,
     pub mongodb_uri: Option<String>,
     pub mongodb_db: String,
+    pub database_url: Option<String>,
     pub aws_region: Option<String>,
     pub s3_bucket_name: Option<String>,
     pub cdn_url: String,
@@ -18,6 +19,7 @@ impl AppConfig {
         let mongodb_uri = std::env::var("MONGODB_URI").ok();
         let mongodb_db =
             std::env::var("MONGODB_DB").unwrap_or_else(|_| "ArchisketchDB".to_string());
+        let database_url = std::env::var("DATABASE_URL").ok();
         let aws_region = std::env::var("AWS_REGION").ok();
         let s3_bucket_name = std::env::var("S3_BUCKET_NAME").ok();
         let cdn_url = std::env::var("CDN_URL")
@@ -27,6 +29,7 @@ impl AppConfig {
             port,
             mongodb_uri,
             mongodb_db,
+            database_url,
             aws_region,
             s3_bucket_name,
             cdn_url,

@@ -2,14 +2,22 @@ use aws_sdk_s3::Client as S3Client;
 use axum::{
     Json,
     extract::{Path, State},
+    http::StatusCode as AxumStatusCode,
 };
-use reqwest::{Client as HttpClient, StatusCode};
+use reqwest::{Client as HttpClient, StatusCode as HttpStatusCode};
 use std::borrow::ToOwned;
 
 use crate::{
     error::ApiError,
-    models::project::{Project, child::floorplan::Floorplan, response::ProjectResponse},
-    repositories::project_repository::ProjectRepository,
+    models::project::{
+        Project,
+        child::{floorplan::Floorplan, structure::BoundingBox},
+        response::ProjectResponse,
+    },
+    repositories::{
+        floor_structure_repository::FloorStructureRecord, project_repository::ProjectRepository,
+        room_structure_repository::RoomStructureRecord,
+    },
     state::AppState,
 };
 
@@ -30,6 +38,25 @@ pub async fn get_project_by_id(
     .await?;
     let response = ProjectResponse::try_from_project(&project).map_err(ApiError::internal)?;
     Ok(Json(response))
+}
+
+pub async fn create_project_structure(
+    State(state): State<AppState>,
+    Path(project_id): Path<String>,
+) -> Result<AxumStatusCode, ApiError> {
+    let project_repository = state.project_repository()?;
+    let floor_structure_repository = state.floor_structure_repository()?;
+    let room_structure_repository = state.room_structure_repository()?;
+
+    let mut project = project_repository.get_by_id(&project_id).await?;
+    populate_floorplans(&state.http_client, &state.cdn_base_url, &mut project).await?;
+
+    let (floor_records, room_records) = build_structure_records(&project_id, &project.floorplans)?;
+
+    floor_structure_repository.save_all(floor_records).await?;
+    room_structure_repository.save_all(room_records).await?;
+
+    Ok(AxumStatusCode::NO_CONTENT)
 }
 
 async fn populate_floorplans(
@@ -59,7 +86,7 @@ async fn populate_floorplans(
         .await
         .map_err(ApiError::internal)?;
 
-    if response.status() == StatusCode::NOT_FOUND {
+    if response.status() == HttpStatusCode::NOT_FOUND {
         return Ok(());
     }
     if !response.status().is_success() {
@@ -149,4 +176,95 @@ async fn ensure_default_cover_image(
     }
 
     Ok(())
+}
+
+fn build_structure_records(
+    project_id: &str,
+    floorplans: &[Floorplan],
+) -> Result<(Vec<FloorStructureRecord>, Vec<RoomStructureRecord>), ApiError> {
+    let floor_records = build_floor_structure_records(project_id, floorplans)?;
+    let room_records = build_room_structure_records(project_id, floorplans)?;
+
+    Ok((floor_records, room_records))
+}
+
+fn build_floor_structure_records(
+    project_id: &str,
+    floorplans: &[Floorplan],
+) -> Result<Vec<FloorStructureRecord>, ApiError> {
+    let mut records = Vec::with_capacity(floorplans.len());
+
+    for floorplan in floorplans {
+        let bounding_box = BoundingBox::from_floorplan(floorplan).map_err(ApiError::internal)?;
+        let area = floorplan
+            .area
+            .ok_or_else(|| anyhow::anyhow!("floorplan {} missing area", floorplan.id))
+            .map_err(ApiError::internal)?;
+        let title = floorplan
+            .title
+            .clone()
+            .ok_or_else(|| anyhow::anyhow!("floorplan {} missing title", floorplan.id))
+            .map_err(ApiError::internal)?;
+
+        let rectangularity = if bounding_box.area > 0.0 {
+            area / bounding_box.area
+        } else {
+            0.0
+        };
+
+        records.push(FloorStructureRecord {
+            id: floorplan.id.clone(),
+            title,
+            project_id: project_id.to_string(),
+            area,
+            bounding_box_width: bounding_box.width,
+            bounding_box_height: bounding_box.height,
+            bounding_box_area: bounding_box.area,
+            bounding_box_aspect: bounding_box.aspect,
+            bounding_box_aspect_ri: bounding_box.aspect_ri,
+            rectangularity,
+        });
+    }
+
+    Ok(records)
+}
+
+fn build_room_structure_records(
+    project_id: &str,
+    floorplans: &[Floorplan],
+) -> Result<Vec<RoomStructureRecord>, ApiError> {
+    let mut records = Vec::new();
+
+    for floorplan in floorplans {
+        let rooms = floorplan
+            .rooms
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("floorplan {} missing rooms", floorplan.id))
+            .map_err(ApiError::internal)?;
+
+        for room in rooms {
+            let bounding_box =
+                BoundingBox::from_room(floorplan, room).map_err(ApiError::internal)?;
+            let rectangularity = if bounding_box.area > 0.0 {
+                room.area / bounding_box.area
+            } else {
+                0.0
+            };
+
+            records.push(RoomStructureRecord {
+                id: room.archi_id.clone(),
+                project_id: project_id.to_string(),
+                r#type: room.r#type,
+                area: room.area,
+                bounding_box_width: bounding_box.width,
+                bounding_box_height: bounding_box.height,
+                bounding_box_area: bounding_box.area,
+                bounding_box_aspect: bounding_box.aspect,
+                bounding_box_aspect_ri: bounding_box.aspect_ri,
+                rectangularity,
+            });
+        }
+    }
+
+    Ok(records)
 }

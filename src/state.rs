@@ -1,11 +1,20 @@
 use anyhow::anyhow;
 use aws_sdk_s3::Client as S3Client;
 use reqwest::Client as HttpClient;
-use crate::{error::ApiError, repositories::project_repository::ProjectRepository};
+
+use crate::{
+    error::ApiError,
+    repositories::{
+        floor_structure_repository::FloorStructureRepository,
+        project_repository::ProjectRepository, room_structure_repository::RoomStructureRepository,
+    },
+};
 
 #[derive(Clone)]
 pub struct AppState {
     pub project_repository: Option<ProjectRepository>,
+    pub floor_structure_repository: Option<FloorStructureRepository>,
+    pub room_structure_repository: Option<RoomStructureRepository>,
     pub s3_client: Option<S3Client>,
     pub s3_bucket: Option<String>,
     pub cdn_base_url: String,
@@ -17,5 +26,17 @@ impl AppState {
         self.project_repository
             .as_ref()
             .ok_or_else(|| ApiError::internal(anyhow!("Mongo connection is not configured")))
+    }
+
+    pub fn floor_structure_repository(&self) -> Result<&FloorStructureRepository, ApiError> {
+        self.floor_structure_repository
+            .as_ref()
+            .ok_or_else(|| ApiError::internal(anyhow!("Postgres connection is not configured")))
+    }
+
+    pub fn room_structure_repository(&self) -> Result<&RoomStructureRepository, ApiError> {
+        self.room_structure_repository
+            .as_ref()
+            .ok_or_else(|| ApiError::internal(anyhow!("Postgres connection is not configured")))
     }
 }

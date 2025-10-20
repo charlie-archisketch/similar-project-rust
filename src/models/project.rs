@@ -1,8 +1,13 @@
+pub mod child;
+pub mod enums;
+pub mod response;
+pub mod structure;
+
 use bson::DateTime as BsonDateTime;
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
-use crate::models::project::child::{Floorplan, FromMap, Portfolio};
+use child::{Floorplan, FromMap, Portfolio};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

@@ -51,28 +51,28 @@ impl RoomStructureRepository {
             return Ok(());
         }
 
-        let models: Vec<room_structure::ActiveModel> =
-            records.into_iter().map(Into::into).collect();
-
-        RoomStructureEntity::insert_many(models)
-            .on_conflict(
-                OnConflict::column(RoomStructureColumn::Id)
-                    .update_columns([
-                        RoomStructureColumn::ProjectId,
-                        RoomStructureColumn::Type,
-                        RoomStructureColumn::Area,
-                        RoomStructureColumn::BoundingBoxWidth,
-                        RoomStructureColumn::BoundingBoxHeight,
-                        RoomStructureColumn::BoundingBoxArea,
-                        RoomStructureColumn::BoundingBoxAspect,
-                        RoomStructureColumn::BoundingBoxAspectRi,
-                        RoomStructureColumn::Rectangularity,
-                    ])
-                    .to_owned(),
-            )
-            .exec(&self.db)
-            .await
-            .map_err(ApiError::internal)?;
+        for record in records {
+            let model: room_structure::ActiveModel = record.into();
+            RoomStructureEntity::insert(model)
+                .on_conflict(
+                    OnConflict::column(RoomStructureColumn::Id)
+                        .update_columns([
+                            RoomStructureColumn::ProjectId,
+                            RoomStructureColumn::Type,
+                            RoomStructureColumn::Area,
+                            RoomStructureColumn::BoundingBoxWidth,
+                            RoomStructureColumn::BoundingBoxHeight,
+                            RoomStructureColumn::BoundingBoxArea,
+                            RoomStructureColumn::BoundingBoxAspect,
+                            RoomStructureColumn::BoundingBoxAspectRi,
+                            RoomStructureColumn::Rectangularity,
+                        ])
+                        .to_owned(),
+                )
+                .exec(&self.db)
+                .await
+                .map_err(ApiError::internal)?;
+        }
 
         Ok(())
     }

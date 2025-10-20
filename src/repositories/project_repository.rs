@@ -1,4 +1,4 @@
-use mongodb::{Collection, Database, bson::doc, options::UpdateOptions};
+use mongodb::{Collection, Database, bson::doc, options::FindOptions, options::UpdateOptions};
 
 use crate::{error::ApiError, models::project::Project};
 
@@ -39,5 +39,33 @@ impl ProjectRepository {
             .await
             .map_err(ApiError::internal)?;
         Ok(())
+    }
+
+    pub async fn find_recent_ids(&self, limit: i64) -> Result<Vec<String>, ApiError> {
+        if limit <= 0 {
+            return Ok(Vec::new());
+        }
+
+        let options = FindOptions::builder()
+            .sort(doc! { "updatedAt": -1 })
+            .limit(limit)
+            .build();
+
+        let mut cursor = self
+            .collection
+            .find(doc! {}, options)
+            .await
+            .map_err(ApiError::internal)?;
+
+        let mut ids = Vec::new();
+        while cursor.advance().await.map_err(ApiError::internal)? {
+            let project: Project = cursor.deserialize_current().map_err(ApiError::internal)?;
+
+            if let Some(id) = project.id {
+                ids.push(id);
+            }
+        }
+
+        Ok(ids)
     }
 }

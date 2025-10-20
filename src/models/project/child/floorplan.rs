@@ -228,6 +228,10 @@ pub struct Room {
     pub items: Vec<Item>,
     #[serde(default)]
     pub seats: i32,
+    #[serde(
+        default,
+        deserialize_with = "crate::utils::serde::deserialize_f64_or_default"
+    )]
     pub area: f64,
 }
 

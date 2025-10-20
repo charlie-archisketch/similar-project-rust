@@ -4,7 +4,9 @@ use axum::{
 };
 
 use crate::{
-    handlers::project_handler::{create_project_structure, get_project_by_id},
+    handlers::project_handler::{
+        create_project_structure, create_recent_project_structures, get_project_by_id,
+    },
     state::AppState,
 };
 
@@ -14,5 +16,9 @@ pub fn router() -> Router<AppState> {
         .route(
             "/projects/{project_id}/structure",
             post(create_project_structure),
+        )
+        .route(
+            "/projects/structures",
+            post(create_recent_project_structures),
         )
 }

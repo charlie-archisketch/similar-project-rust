@@ -59,6 +59,41 @@ pub async fn create_project_structure(
     Ok(AxumStatusCode::NO_CONTENT)
 }
 
+pub async fn create_recent_project_structures(
+    State(state): State<AppState>,
+) -> Result<AxumStatusCode, ApiError> {
+    const RECENT_LIMIT: i64 = 100;
+
+    let project_repository = state.project_repository()?;
+    let floor_structure_repository = state.floor_structure_repository()?;
+    let room_structure_repository = state.room_structure_repository()?;
+
+    let ids = project_repository.find_recent_ids(RECENT_LIMIT).await?;
+
+    let mut floor_records = Vec::new();
+    let mut room_records = Vec::new();
+
+    for project_id in ids {
+        let mut project = project_repository.get_by_id(&project_id).await?;
+        populate_floorplans(&state.http_client, &state.cdn_base_url, &mut project).await?;
+
+        if project.floorplans.is_empty() {
+            continue;
+        }
+
+        let (project_floor_records, project_room_records) =
+            build_structure_records(&project_id, &project.floorplans)?;
+
+        floor_records.extend(project_floor_records);
+        room_records.extend(project_room_records);
+    }
+
+    floor_structure_repository.save_all(floor_records).await?;
+    room_structure_repository.save_all(room_records).await?;
+
+    Ok(AxumStatusCode::NO_CONTENT)
+}
+
 async fn populate_floorplans(
     http_client: &HttpClient,
     cdn_base_url: &str,

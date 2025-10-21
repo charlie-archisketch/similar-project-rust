@@ -27,3 +27,4 @@ aws-config = "1.3.0"
 aws-sdk-s3 = { version = "1.3.0", default-features = false, features = ["rustls"] }
 aws-types = "1.3.0"
 migration = { path = "migration" }
+tower-http = { version = "0.6.2", features = ["cors"] }

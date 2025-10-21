@@ -1,11 +1,13 @@
 use aws_sdk_s3::Client as S3Client;
 use axum::{
     Json,
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::StatusCode as AxumStatusCode,
 };
 use reqwest::{Client as HttpClient, StatusCode as HttpStatusCode};
 use std::{borrow::ToOwned, collections::HashMap};
+
+use serde::Deserialize;
 
 use crate::{
     error::ApiError,
@@ -17,9 +19,17 @@ use crate::{
         floor_structure_repository::FloorStructureRecord, project_repository::ProjectRepository,
         room_structure_repository::RoomStructureRecord,
     },
-    routes::project::dto::{FloorResponse, ProjectResponse},
+    routes::project::dto::{FloorResponse, ProjectResponse, RoomResponse},
     state::AppState,
 };
+
+#[derive(Debug, Default, Deserialize)]
+pub struct SimilarRoomsQuery {
+    #[serde(rename = "areaFrom")]
+    area_from: Option<i32>,
+    #[serde(rename = "areaTo")]
+    area_to: Option<i32>,
+}
 
 pub async fn get_project_by_id(
     State(state): State<AppState>,
@@ -153,6 +163,99 @@ pub async fn get_similar_floors(
         if let Some(project) = project_map.get(&record.project_id) {
             let response = FloorResponse::try_from_project(project, &record.id, &record.title)
                 .map_err(ApiError::internal)?;
+            responses.push(response);
+        }
+    }
+
+    Ok(Json(responses))
+}
+
+pub async fn get_similar_rooms(
+    State(state): State<AppState>,
+    Path(room_id): Path<String>,
+    Query(query): Query<SimilarRoomsQuery>,
+) -> Result<Json<Vec<RoomResponse>>, ApiError> {
+    const SIMILAR_LIMIT: u64 = 10;
+
+    let project_repository = state.project_repository()?;
+    let room_structure_repository = state.room_structure_repository()?;
+
+    let room = room_structure_repository
+        .find_by_id(&room_id)
+        .await?
+        .ok_or_else(|| ApiError::not_found(format!("room {room_id} not found")))?;
+
+    let area_from = query
+        .area_from
+        .map(|value| (value as f64) * 1000.0)
+        .unwrap_or(room.area * 0.85);
+    let area_to = query
+        .area_to
+        .map(|value| (value as f64) * 1000.0)
+        .unwrap_or(room.area * 1.15);
+
+    let similar_rooms = if room.r#type != 0 {
+        room_structure_repository
+            .find_top_k_similar_rooms_by_type(
+                &room.project_id,
+                room.area,
+                area_from,
+                area_to,
+                room.rectangularity,
+                room.bounding_box_aspect_ri,
+                room.r#type,
+                SIMILAR_LIMIT,
+            )
+            .await?
+    } else {
+        room_structure_repository
+            .find_top_k_similar_rooms(
+                &room.project_id,
+                room.area,
+                area_from,
+                area_to,
+                room.rectangularity,
+                room.bounding_box_aspect_ri,
+                SIMILAR_LIMIT,
+            )
+            .await?
+    };
+
+    if similar_rooms.is_empty() {
+        return Ok(Json(Vec::new()));
+    }
+
+    let mut project_ids: Vec<String> = similar_rooms
+        .iter()
+        .map(|record| record.project_id.clone())
+        .collect();
+    project_ids.sort();
+    project_ids.dedup();
+
+    let mut projects = project_repository.find_many_by_ids(&project_ids).await?;
+    for project in &mut projects {
+        ensure_default_cover_image(
+            project_repository,
+            project,
+            state.s3_client.as_ref(),
+            state.s3_bucket.as_deref(),
+            &state.cdn_base_url,
+        )
+        .await?;
+    }
+
+    let mut project_map: HashMap<String, Project> = HashMap::new();
+    for project in projects {
+        if let Some(id) = project.id.clone() {
+            project_map.insert(id, project);
+        }
+    }
+
+    let mut responses = Vec::with_capacity(similar_rooms.len());
+    for record in similar_rooms {
+        if let Some(project) = project_map.get(&record.project_id) {
+            let response =
+                RoomResponse::try_from_project(project, &record.id).map_err(ApiError::internal)?;
             responses.push(response);
         }
     }

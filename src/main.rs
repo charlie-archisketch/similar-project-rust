@@ -19,6 +19,7 @@ use reqwest::Client as HttpClient;
 use routes::app_router;
 use sea_orm::Database;
 use state::AppState;
+use tower_http::cors::{Any, CorsLayer};
 use tracing_subscriber::EnvFilter;
 
 #[tokio::main(flavor = "multi_thread")]
@@ -88,7 +89,11 @@ async fn main() -> anyhow::Result<()> {
         cdn_base_url: config.cdn_url.clone(),
         http_client,
     };
-    let router: Router<_> = app_router().with_state(state);
+    let cors = CorsLayer::new()
+        .allow_origin(Any)
+        .allow_methods(Any)
+        .allow_headers(Any);
+    let router: Router<_> = app_router().with_state(state).layer(cors);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], config.port));
     tracing::info!("listening on {}", addr);

@@ -1,3 +1,3 @@
 pub mod response;
 
-pub use response::ProjectResponse;
+pub use response::{FloorResponse, ProjectResponse};

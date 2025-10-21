@@ -1,4 +1,9 @@
-use mongodb::{Collection, Database, bson::doc, options::FindOptions, options::UpdateOptions};
+use mongodb::{
+    Collection, Database,
+    bson::{Bson, doc},
+    options::FindOptions,
+    options::UpdateOptions,
+};
 
 use crate::{error::ApiError, models::project::Project};
 
@@ -67,5 +72,28 @@ impl ProjectRepository {
         }
 
         Ok(ids)
+    }
+
+    pub async fn find_many_by_ids(&self, ids: &[String]) -> Result<Vec<Project>, ApiError> {
+        if ids.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let bson_ids: Vec<Bson> = ids.iter().cloned().map(Bson::String).collect();
+        let filter = doc! { "_id": { "$in": bson_ids } };
+
+        let mut cursor = self
+            .collection
+            .find(filter, None)
+            .await
+            .map_err(ApiError::internal)?;
+
+        let mut projects = Vec::new();
+        while cursor.advance().await.map_err(ApiError::internal)? {
+            let project: Project = cursor.deserialize_current().map_err(ApiError::internal)?;
+            projects.push(project);
+        }
+
+        Ok(projects)
     }
 }

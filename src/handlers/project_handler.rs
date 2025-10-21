@@ -5,7 +5,7 @@ use axum::{
     http::StatusCode as AxumStatusCode,
 };
 use reqwest::{Client as HttpClient, StatusCode as HttpStatusCode};
-use std::borrow::ToOwned;
+use std::{borrow::ToOwned, collections::HashMap};
 
 use crate::{
     error::ApiError,
@@ -17,7 +17,7 @@ use crate::{
         floor_structure_repository::FloorStructureRecord, project_repository::ProjectRepository,
         room_structure_repository::RoomStructureRecord,
     },
-    routes::project::dto::ProjectResponse,
+    routes::project::dto::{FloorResponse, ProjectResponse},
     state::AppState,
 };
 
@@ -92,6 +92,72 @@ pub async fn create_recent_project_structures(
     room_structure_repository.save_all(room_records).await?;
 
     Ok(AxumStatusCode::NO_CONTENT)
+}
+
+pub async fn get_similar_floors(
+    State(state): State<AppState>,
+    Path(floor_id): Path<String>,
+) -> Result<Json<Vec<FloorResponse>>, ApiError> {
+    const SIMILAR_LIMIT: u64 = 10;
+
+    let project_repository = state.project_repository()?;
+    let floor_structure_repository = state.floor_structure_repository()?;
+
+    let floor = floor_structure_repository
+        .find_by_id(&floor_id)
+        .await?
+        .ok_or_else(|| ApiError::not_found(format!("floor {floor_id} not found")))?;
+
+    let similar_floors = floor_structure_repository
+        .find_top_k_similar_floors(
+            &floor.project_id,
+            floor.area,
+            floor.bounding_box_aspect_ri,
+            floor.rectangularity,
+            SIMILAR_LIMIT,
+        )
+        .await?;
+
+    if similar_floors.is_empty() {
+        return Ok(Json(Vec::new()));
+    }
+
+    let mut project_ids: Vec<String> = similar_floors
+        .iter()
+        .map(|record| record.project_id.clone())
+        .collect();
+    project_ids.sort();
+    project_ids.dedup();
+
+    let mut projects = project_repository.find_many_by_ids(&project_ids).await?;
+    for project in &mut projects {
+        ensure_default_cover_image(
+            project_repository,
+            project,
+            state.s3_client.as_ref(),
+            state.s3_bucket.as_deref(),
+            &state.cdn_base_url,
+        )
+        .await?;
+    }
+
+    let mut project_map: HashMap<String, Project> = HashMap::new();
+    for project in projects {
+        if let Some(id) = project.id.clone() {
+            project_map.insert(id, project);
+        }
+    }
+
+    let mut responses = Vec::with_capacity(similar_floors.len());
+    for record in similar_floors {
+        if let Some(project) = project_map.get(&record.project_id) {
+            let response = FloorResponse::try_from_project(project, &record.id, &record.title)
+                .map_err(ApiError::internal)?;
+            responses.push(response);
+        }
+    }
+
+    Ok(Json(responses))
 }
 
 async fn populate_floorplans(

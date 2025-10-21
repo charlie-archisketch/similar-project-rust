@@ -73,3 +73,48 @@ impl ProjectResponse {
         })
     }
 }
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FloorResponse {
+    #[serde(rename = "_id")]
+    pub id: String,
+    pub title: String,
+    pub project_id: String,
+    pub project_name: String,
+    pub user_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cover_image: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub default_cover_image: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub state: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub created_at: Option<DateTime<Utc>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub updated_at: Option<DateTime<Utc>>,
+}
+
+impl FloorResponse {
+    pub fn try_from_project(project: &Project, id: &str, title: &str) -> Result<Self> {
+        let project_id = project
+            .id
+            .clone()
+            .ok_or_else(|| anyhow!("missing project id"))?;
+        let created_at = project.created_at.as_ref().map(|dt| dt.to_chrono());
+        let updated_at = project.updated_at.as_ref().map(|dt| dt.to_chrono());
+
+        Ok(Self {
+            id: id.to_string(),
+            title: title.to_string(),
+            project_id,
+            project_name: project.name.clone().unwrap_or_default(),
+            user_id: project.user_id.clone(),
+            cover_image: project.cover_image.clone(),
+            default_cover_image: project.default_cover_image.clone(),
+            state: project.state,
+            created_at,
+            updated_at,
+        })
+    }
+}

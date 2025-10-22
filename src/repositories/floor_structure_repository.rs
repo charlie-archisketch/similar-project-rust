@@ -72,6 +72,8 @@ impl FloorStructureRepository {
         &self,
         exclude_project_id: &str,
         area: f64,
+        area_from: f64,
+        area_to: f64,
         aspect_ri: f64,
         rectangularity: f64,
         k: u64,
@@ -121,6 +123,10 @@ impl FloorStructureRepository {
             .and_where(
                 Expr::col((floor_structure::Entity, FloorStructureColumn::ProjectId))
                     .ne(exclude_project_id),
+            )
+            .and_where(
+                Expr::col((floor_structure::Entity, FloorStructureColumn::Area))
+                    .between(Expr::value(area_from), Expr::value(area_to)),
             )
             .order_by(score_alias.clone(), Order::Asc)
             .limit(k);

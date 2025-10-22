@@ -24,7 +24,7 @@ use crate::{
 };
 
 #[derive(Debug, Default, Deserialize)]
-pub struct SimilarRoomsQuery {
+pub struct AreaRangeQuery {
     #[serde(rename = "areaFrom")]
     area_from: Option<i32>,
     #[serde(rename = "areaTo")]
@@ -107,6 +107,7 @@ pub async fn create_recent_project_structures(
 pub async fn get_similar_floors(
     State(state): State<AppState>,
     Path(floor_id): Path<String>,
+    Query(query): Query<AreaRangeQuery>,
 ) -> Result<Json<Vec<FloorResponse>>, ApiError> {
     const SIMILAR_LIMIT: u64 = 10;
 
@@ -118,10 +119,21 @@ pub async fn get_similar_floors(
         .await?
         .ok_or_else(|| ApiError::not_found(format!("floor {floor_id} not found")))?;
 
+    let area_from = query
+        .area_from
+        .map(|value| value as f64)
+        .unwrap_or(floor.area * 0.85);
+    let area_to = query
+        .area_to
+        .map(|value| value as f64)
+        .unwrap_or(floor.area * 1.15);
+
     let similar_floors = floor_structure_repository
         .find_top_k_similar_floors(
             &floor.project_id,
             floor.area,
+            area_from,
+            area_to,
             floor.bounding_box_aspect_ri,
             floor.rectangularity,
             SIMILAR_LIMIT,
@@ -173,7 +185,7 @@ pub async fn get_similar_floors(
 pub async fn get_similar_rooms(
     State(state): State<AppState>,
     Path(room_id): Path<String>,
-    Query(query): Query<SimilarRoomsQuery>,
+    Query(query): Query<AreaRangeQuery>,
 ) -> Result<Json<Vec<RoomResponse>>, ApiError> {
     const SIMILAR_LIMIT: u64 = 10;
 
@@ -187,11 +199,11 @@ pub async fn get_similar_rooms(
 
     let area_from = query
         .area_from
-        .map(|value| (value as f64) * 1000.0)
+        .map(|value| (value as f64) * 1_000_000.0)
         .unwrap_or(room.area * 0.85);
     let area_to = query
         .area_to
-        .map(|value| (value as f64) * 1000.0)
+        .map(|value| (value as f64) * 1_000_000.0)
         .unwrap_or(room.area * 1.15);
 
     let similar_rooms = if room.r#type != 0 {

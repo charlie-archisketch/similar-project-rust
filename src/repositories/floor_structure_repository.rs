@@ -128,6 +128,18 @@ impl FloorStructureRepository {
                 Expr::col((floor_structure::Entity, FloorStructureColumn::Area))
                     .between(Expr::value(area_from), Expr::value(area_to)),
             )
+            .and_where(
+                Expr::col((floor_structure::Entity, FloorStructureColumn::BoundingBoxAspectRi)).between(
+                    Expr::value(aspect_ri * 0.85_f64),
+                    Expr::value(aspect_ri * 1.15_f64),
+                ),
+            )
+            .and_where(
+                Expr::col((floor_structure::Entity, FloorStructureColumn::Rectangularity)).between(
+                    Expr::value(rectangularity - 0.1_f64),
+                    Expr::value(rectangularity + 0.1_f64),
+                ),
+            )
             .order_by(score_alias.clone(), Order::Asc)
             .limit(k);
 

@@ -75,56 +75,7 @@ impl RoomStructureRepository {
         area_to: f64,
         rectangularity: f64,
         aspect_ri: f64,
-        k: u64,
-    ) -> Result<Vec<SimilarRoom>, ApiError> {
-        self.find_top_k_similar_rooms_impl(
-            exclude_project_id,
-            area,
-            area_from,
-            area_to,
-            rectangularity,
-            aspect_ri,
-            None,
-            k,
-        )
-        .await
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    pub async fn find_top_k_similar_rooms_by_type(
-        &self,
-        exclude_project_id: &str,
-        area: f64,
-        area_from: f64,
-        area_to: f64,
-        rectangularity: f64,
-        aspect_ri: f64,
         room_type: i32,
-        k: u64,
-    ) -> Result<Vec<SimilarRoom>, ApiError> {
-        self.find_top_k_similar_rooms_impl(
-            exclude_project_id,
-            area,
-            area_from,
-            area_to,
-            rectangularity,
-            aspect_ri,
-            Some(room_type),
-            k,
-        )
-        .await
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    async fn find_top_k_similar_rooms_impl(
-        &self,
-        exclude_project_id: &str,
-        area: f64,
-        area_from: f64,
-        area_to: f64,
-        rectangularity: f64,
-        aspect_ri: f64,
-        room_type: Option<i32>,
         k: u64,
     ) -> Result<Vec<SimilarRoom>, ApiError> {
         if k == 0 {
@@ -172,26 +123,23 @@ impl RoomStructureRepository {
             .and_where(
                 Expr::col((room_structure::Entity, RoomStructureColumn::Area))
                     .between(Expr::value(area_from), Expr::value(area_to)),
-            );
-
-        if let Some(room_type) = room_type {
-            select.and_where(
-                Expr::col((room_structure::Entity, RoomStructureColumn::Type)).eq(room_type),
-            );
-            select.and_where(
+            )
+            .and_where(
+                Expr::col((room_structure::Entity, RoomStructureColumn::BoundingBoxAspectRi)).between(
+                    Expr::value(aspect_ri * 0.85_f64),
+                    Expr::value(aspect_ri * 1.15_f64),
+                ),
+            )
+            .and_where(
                 Expr::col((room_structure::Entity, RoomStructureColumn::Rectangularity)).between(
                     Expr::value(rectangularity - 0.1_f64),
                     Expr::value(rectangularity + 0.1_f64),
                 ),
             );
-        } else {
-            let lower = Expr::col((room_structure::Entity, RoomStructureColumn::Rectangularity))
-                .sub(Expr::value(0.1_f64));
-            let upper = Expr::col((room_structure::Entity, RoomStructureColumn::Rectangularity))
-                .add(Expr::value(0.1_f64));
+
+        if room_type != 0 {
             select.and_where(
-                Expr::col((room_structure::Entity, RoomStructureColumn::Rectangularity))
-                    .between(lower, upper),
+                Expr::col((room_structure::Entity, RoomStructureColumn::Type)).eq(room_type),
             );
         }
 

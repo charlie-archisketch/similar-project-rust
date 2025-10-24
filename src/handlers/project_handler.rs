@@ -72,7 +72,7 @@ pub async fn create_project_structure(
 pub async fn create_recent_project_structures(
     State(state): State<AppState>,
 ) -> Result<AxumStatusCode, ApiError> {
-    const RECENT_LIMIT: i64 = 100;
+    const RECENT_LIMIT: i64 = 300;
 
     let project_repository = state.project_repository()?;
     let floor_structure_repository = state.floor_structure_repository()?;
@@ -206,9 +206,9 @@ pub async fn get_similar_rooms(
         .map(|value| (value as f64) * 1_000_000.0)
         .unwrap_or(room.area * 1.15);
 
-    let similar_rooms = if room.r#type != 0 {
+    let similar_rooms = 
         room_structure_repository
-            .find_top_k_similar_rooms_by_type(
+            .find_top_k_similar_rooms(
                 &room.project_id,
                 room.area,
                 area_from,
@@ -218,20 +218,7 @@ pub async fn get_similar_rooms(
                 room.r#type,
                 SIMILAR_LIMIT,
             )
-            .await?
-    } else {
-        room_structure_repository
-            .find_top_k_similar_rooms(
-                &room.project_id,
-                room.area,
-                area_from,
-                area_to,
-                room.rectangularity,
-                room.bounding_box_aspect_ri,
-                SIMILAR_LIMIT,
-            )
-            .await?
-    };
+            .await?;
 
     if similar_rooms.is_empty() {
         return Ok(Json(Vec::new()));

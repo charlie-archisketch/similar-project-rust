@@ -2,6 +2,7 @@ pub use sea_orm_migration::prelude::*;
 
 mod m20250224_000001_create_structures_tables;
 mod m20251023_070251_create_project_table;
+mod m20251028_074726_add_room_count_column_at_floor_structure;
 
 pub struct Migrator;
 
@@ -11,6 +12,7 @@ impl MigratorTrait for Migrator {
         vec![
             Box::new(m20250224_000001_create_structures_tables::Migration),
             Box::new(m20251023_070251_create_project_table::Migration),
+            Box::new(m20251028_074726_add_room_count_column_at_floor_structure::Migration),
         ]
     }
 }

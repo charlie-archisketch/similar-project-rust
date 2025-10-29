@@ -132,6 +132,7 @@ pub async fn get_similar_floors(
         .find_top_k_similar_floors(
             &floor.project_id,
             floor.area,
+            floor.room_count,
             area_from,
             area_to,
             floor.bounding_box_aspect_ri,
@@ -206,19 +207,18 @@ pub async fn get_similar_rooms(
         .map(|value| (value as f64) * 1_000_000.0)
         .unwrap_or(room.area * 1.15);
 
-    let similar_rooms = 
-        room_structure_repository
-            .find_top_k_similar_rooms(
-                &room.project_id,
-                room.area,
-                area_from,
-                area_to,
-                room.rectangularity,
-                room.bounding_box_aspect_ri,
-                room.r#type,
-                SIMILAR_LIMIT,
-            )
-            .await?;
+    let similar_rooms = room_structure_repository
+        .find_top_k_similar_rooms(
+            &room.project_id,
+            room.area,
+            area_from,
+            area_to,
+            room.rectangularity,
+            room.bounding_box_aspect_ri,
+            room.r#type,
+            SIMILAR_LIMIT,
+        )
+        .await?;
 
     if similar_rooms.is_empty() {
         return Ok(Json(Vec::new()));
@@ -408,6 +408,12 @@ fn build_floor_structure_records(
             .clone()
             .ok_or_else(|| anyhow::anyhow!("floorplan {} missing title", floorplan.id))
             .map_err(ApiError::internal)?;
+        let room_count = floorplan
+            .rooms
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("floorplan {} missing rooms", floorplan.id))
+            .map_err(ApiError::internal)?
+            .len() as i32;
 
         let rectangularity = if bounding_box.area > 0.0 {
             area * 1_000_000.0 / bounding_box.area
@@ -420,6 +426,7 @@ fn build_floor_structure_records(
             title,
             project_id: project_id.to_string(),
             area,
+            room_count,
             bounding_box_width: bounding_box.width,
             bounding_box_height: bounding_box.height,
             bounding_box_area: bounding_box.area,

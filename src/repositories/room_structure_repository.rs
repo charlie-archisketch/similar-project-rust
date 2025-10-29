@@ -82,25 +82,21 @@ impl RoomStructureRepository {
             return Ok(Vec::new());
         }
 
-        let area_denominator = area + 1_000_000.0;
-
         let area_dist = Func::abs(
             Expr::col((room_structure::Entity, RoomStructureColumn::Area)).sub(Expr::value(area)),
         )
-        .div(Expr::value(area_denominator));
+        .div(Expr::value(area.max(5.0_f64)));
         let aspect_dist = Func::abs(
             Expr::col((
                 room_structure::Entity,
                 RoomStructureColumn::BoundingBoxAspectRi,
             ))
             .sub(Expr::value(aspect_ri)),
-        )
-        .div(Expr::value(0.3_f64));
+        );
         let rectangularity_dist = Func::abs(
             Expr::col((room_structure::Entity, RoomStructureColumn::Rectangularity))
                 .sub(Expr::value(rectangularity)),
-        )
-        .div(Expr::value(0.1_f64));
+        );
 
         let score_expr = area_dist
             .clone()
@@ -125,7 +121,11 @@ impl RoomStructureRepository {
                     .between(Expr::value(area_from), Expr::value(area_to)),
             )
             .and_where(
-                Expr::col((room_structure::Entity, RoomStructureColumn::BoundingBoxAspectRi)).between(
+                Expr::col((
+                    room_structure::Entity,
+                    RoomStructureColumn::BoundingBoxAspectRi,
+                ))
+                .between(
                     Expr::value(aspect_ri * 0.85_f64),
                     Expr::value(aspect_ri * 1.15_f64),
                 ),

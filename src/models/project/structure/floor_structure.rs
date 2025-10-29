@@ -8,6 +8,7 @@ pub struct Model {
     pub title: String,
     pub project_id: String,
     pub area: f64,
+    pub room_count: i32,
     pub bounding_box_width: f64,
     pub bounding_box_height: f64,
     pub bounding_box_area: f64,

@@ -9,9 +9,14 @@ impl MigrationTrait for Migration {
         manager
             .alter_table(
                 Table::alter()
-                .table(FloorStructures::Table)
-                .add_column(ColumnDef::new(FloorStructures::RoomCount).integer().not_null())
-                .to_owned(),
+                    .table(FloorStructures::Table)
+                    .add_column(
+                        ColumnDef::new(FloorStructures::RoomCount)
+                            .integer()
+                            .not_null()
+                            .default(1),
+                    )
+                    .to_owned(),
             )
             .await
     }
@@ -20,9 +25,9 @@ impl MigrationTrait for Migration {
         manager
             .alter_table(
                 Table::alter()
-                .table(FloorStructures::Table)
-                .drop_column(FloorStructures::RoomCount)
-                .to_owned(),
+                    .table(FloorStructures::Table)
+                    .drop_column(FloorStructures::RoomCount)
+                    .to_owned(),
             )
             .await
     }

@@ -1,3 +1,5 @@
+use std::cmp::Ordering;
+
 use sea_orm::{
     ActiveValue::Set,
     ConnectionTrait, DatabaseBackend, DatabaseConnection, EntityTrait, FromQueryResult, Order,
@@ -30,6 +32,7 @@ pub struct FloorStructureRecord {
     pub title: String,
     pub project_id: String,
     pub area: f64,
+    pub room_count: i32,
     pub bounding_box_width: f64,
     pub bounding_box_height: f64,
     pub bounding_box_area: f64,
@@ -45,6 +48,7 @@ impl From<FloorStructureRecord> for floor_structure::ActiveModel {
             title: Set(record.title),
             project_id: Set(record.project_id),
             area: Set(record.area),
+            room_count: Set(record.room_count),
             bounding_box_width: Set(record.bounding_box_width),
             bounding_box_height: Set(record.bounding_box_height),
             bounding_box_area: Set(record.bounding_box_area),
@@ -72,6 +76,7 @@ impl FloorStructureRepository {
         &self,
         exclude_project_id: &str,
         area: f64,
+        room_count: i32,
         area_from: f64,
         area_to: f64,
         aspect_ri: f64,
@@ -82,39 +87,45 @@ impl FloorStructureRepository {
             return Ok(Vec::new());
         }
 
-        let area_denominator = if area.abs() < f64::EPSILON { 1.0 } else { area };
-
         let area_dist = Func::abs(
             Expr::col((floor_structure::Entity, FloorStructureColumn::Area)).sub(Expr::value(area)),
         )
-        .div(Expr::value(area_denominator));
+        .div(Expr::value(area.max(30.0_f64)));
         let aspect_dist = Func::abs(
             Expr::col((
                 floor_structure::Entity,
                 FloorStructureColumn::BoundingBoxAspectRi,
             ))
             .sub(Expr::value(aspect_ri)),
-        )
-        .div(Expr::value(0.3_f64));
+        );
         let rectangularity_dist = Func::abs(
             Expr::col((
                 floor_structure::Entity,
                 FloorStructureColumn::Rectangularity,
             ))
             .sub(Expr::value(rectangularity)),
-        )
-        .div(Expr::value(0.1_f64));
+        );
+        let room_count_diff = Func::abs(
+            Expr::col((floor_structure::Entity, FloorStructureColumn::RoomCount))
+                .sub(Expr::value(room_count as f64)),
+        );
+        let room_count_dist = room_count_diff
+            .clone()
+            .div(room_count_diff.add(Expr::value(room_count.max(1) as f64)));
 
         let score_expr = area_dist
             .clone()
             .mul(Expr::value(0.3_f64))
-            .add(aspect_dist.clone().mul(Expr::value(0.5_f64)))
-            .add(rectangularity_dist.clone().mul(Expr::value(0.2_f64)));
+            .add(aspect_dist.clone().mul(Expr::value(0.3_f64)))
+            .add(rectangularity_dist.clone().mul(Expr::value(0.2_f64)))
+            .add(room_count_dist.clone().mul(Expr::value(0.2_f64)));
 
         let score_alias = Alias::new("score");
+        let subquery_alias = Alias::new("distinct_floors");
 
-        let mut select = Query::select();
-        select
+        let mut distinct_per_project = Query::select();
+        distinct_per_project
+            .distinct_on([FloorStructureColumn::ProjectId])
             .column((floor_structure::Entity, FloorStructureColumn::Id))
             .column((floor_structure::Entity, FloorStructureColumn::Title))
             .column((floor_structure::Entity, FloorStructureColumn::ProjectId))
@@ -129,27 +140,60 @@ impl FloorStructureRepository {
                     .between(Expr::value(area_from), Expr::value(area_to)),
             )
             .and_where(
-                Expr::col((floor_structure::Entity, FloorStructureColumn::BoundingBoxAspectRi)).between(
+                Expr::col((
+                    floor_structure::Entity,
+                    FloorStructureColumn::BoundingBoxAspectRi,
+                ))
+                .between(
                     Expr::value(aspect_ri * 0.85_f64),
                     Expr::value(aspect_ri * 1.15_f64),
                 ),
             )
             .and_where(
-                Expr::col((floor_structure::Entity, FloorStructureColumn::Rectangularity)).between(
+                Expr::col((
+                    floor_structure::Entity,
+                    FloorStructureColumn::Rectangularity,
+                ))
+                .between(
                     Expr::value(rectangularity - 0.1_f64),
                     Expr::value(rectangularity + 0.1_f64),
                 ),
             )
-            .order_by(score_alias.clone(), Order::Asc)
+            .and_where(
+                Expr::col((floor_structure::Entity, FloorStructureColumn::RoomCount))
+                    .between(Expr::value(room_count - 3), Expr::value(room_count + 3)),
+            )
+            .order_by(
+                (floor_structure::Entity, FloorStructureColumn::ProjectId),
+                Order::Asc,
+            )
+            .order_by_expr(score_expr.clone(), Order::Asc);
+
+        let mut ordered_select = Query::select();
+        ordered_select
+            .column((subquery_alias.clone(), Alias::new("id")))
+            .column((subquery_alias.clone(), Alias::new("title")))
+            .column((subquery_alias.clone(), Alias::new("project_id")))
+            .column((subquery_alias.clone(), score_alias.clone()))
+            .from_subquery(distinct_per_project, subquery_alias.clone())
+            .order_by((subquery_alias.clone(), score_alias.clone()), Order::Asc)
+            .order_by((subquery_alias.clone(), Alias::new("id")), Order::Asc)
             .limit(k);
 
         let backend: DatabaseBackend = self.db.get_database_backend();
-        let stmt: Statement = backend.build(&select);
+        let stmt: Statement = backend.build(&ordered_select);
 
-        SimilarFloor::find_by_statement(stmt)
+        let mut results = SimilarFloor::find_by_statement(stmt)
             .all(&self.db)
             .await
-            .map_err(ApiError::internal)
+            .map_err(ApiError::internal)?;
+
+        results.sort_by(|a, b| match a.score.partial_cmp(&b.score) {
+            Some(ordering) if ordering != Ordering::Equal => ordering,
+            _ => a.id.cmp(&b.id),
+        });
+
+        Ok(results)
     }
 
     pub async fn save_all(&self, records: Vec<FloorStructureRecord>) -> Result<(), ApiError> {
@@ -166,6 +210,7 @@ impl FloorStructureRepository {
                             FloorStructureColumn::Title,
                             FloorStructureColumn::ProjectId,
                             FloorStructureColumn::Area,
+                            FloorStructureColumn::RoomCount,
                             FloorStructureColumn::BoundingBoxWidth,
                             FloorStructureColumn::BoundingBoxHeight,
                             FloorStructureColumn::BoundingBoxArea,

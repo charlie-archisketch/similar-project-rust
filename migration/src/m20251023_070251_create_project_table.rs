@@ -23,22 +23,10 @@ impl MigrationTrait for Migration {
                             .not_null()
                             .default("ACTIVATED"),
                     )
-                    .col(
-                        ColumnDef::new(Project::Name)
-                            .string()
-                            .not_null(),
-                    )
-                    .col(
-                        ColumnDef::new(Project::CoverImage)
-                            .string()
-                            .not_null()
-                    )
+                    .col(ColumnDef::new(Project::Name).string().not_null())
+                    .col(ColumnDef::new(Project::CoverImage).string().not_null())
                     .col(ColumnDef::new(Project::DefaultCoverImage).string())
-                    .col(
-                        ColumnDef::new(Project::FloorplanPath)
-                            .string()
-                            .not_null(),
-                    )
+                    .col(ColumnDef::new(Project::FloorplanPath).string().not_null())
                     .col(
                         ColumnDef::new(Project::CreatedAt)
                             .timestamp()
@@ -58,12 +46,7 @@ impl MigrationTrait for Migration {
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager
-            .drop_table(
-                Table::drop()
-                    .table(Project::Table)
-                    .if_exists()
-                    .to_owned(),
-            )
+            .drop_table(Table::drop().table(Project::Table).if_exists().to_owned())
             .await
     }
 }

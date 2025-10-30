@@ -2,7 +2,7 @@ use anyhow::{Result, anyhow};
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 
-use crate::models::project::Project;
+use crate::models::{image::Image as ProjectImage, project::Project};
 use crate::utils::image::convert_image_url;
 
 #[derive(Debug, Serialize)]
@@ -119,7 +119,6 @@ impl RoomResponse {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FloorResponse {
-    #[serde(rename = "_id")]
     pub id: String,
     pub title: String,
     pub project_id: String,
@@ -159,4 +158,46 @@ impl FloorResponse {
             updated_at,
         })
     }
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProjectRenderingsResponse {
+    pub images: Vec<ProjectRenderingImageResponse>,
+}
+
+impl ProjectRenderingsResponse {
+    pub fn new(images: Vec<ProjectRenderingImageResponse>) -> Self {
+        Self { images }
+    }
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProjectRenderingImageResponse {
+    #[serde(rename = "_id")]
+    pub id: String,
+    pub r#type: i32,
+    pub status: i32,
+    pub resolution: ProjectRenderingResolutionResponse,
+}
+
+impl From<&ProjectImage> for ProjectRenderingImageResponse {
+    fn from(image: &ProjectImage) -> Self {
+        Self {
+            id: image.id.clone(),
+            r#type: image.image_type,
+            status: image.status,
+            resolution: ProjectRenderingResolutionResponse {
+                x: image.resolution.x,
+                y: image.resolution.y,
+            },
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct ProjectRenderingResolutionResponse {
+    pub x: i32,
+    pub y: i32,
 }

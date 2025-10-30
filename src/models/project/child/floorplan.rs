@@ -25,8 +25,8 @@ fn generate_uuid() -> String {
 pub struct Floorplan {
     #[serde(default = "generate_object_id")]
     pub id: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub archi_id: Option<String>,
+    #[serde(default = "generate_uuid")]
+    pub archi_id: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -75,7 +75,7 @@ impl Floorplan {
     pub fn new() -> Self {
         Self {
             id: generate_object_id(),
-            archi_id: None,
+            archi_id: generate_uuid(),
             title: None,
             floorplan_image: None,
             floorplan_image_scale: None,

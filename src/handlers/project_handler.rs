@@ -19,7 +19,10 @@ use crate::{
         floor_structure_repository::FloorStructureRecord, project_repository::ProjectRepository,
         room_structure_repository::RoomStructureRecord,
     },
-    routes::project::dto::{FloorResponse, ProjectResponse, RoomResponse},
+    routes::project::dto::{
+        FloorResponse, ProjectRenderingImageResponse, ProjectRenderingsResponse, ProjectResponse,
+        RoomResponse,
+    },
     state::AppState,
 };
 
@@ -48,6 +51,36 @@ pub async fn get_project_by_id(
     .await?;
     let response = ProjectResponse::try_from_project(&project).map_err(ApiError::internal)?;
     Ok(Json(response))
+}
+
+pub async fn get_project_renderings(
+    State(state): State<AppState>,
+    Path(project_id): Path<String>,
+) -> Result<Json<ProjectRenderingsResponse>, ApiError> {
+    let project_repository = state.project_repository()?;
+    let image_repository = state.image_repository()?;
+
+    let project = project_repository.get_by_id(&project_id).await?;
+    let image_ids = project.image_ids.unwrap_or_default();
+    if image_ids.is_empty() {
+        return Ok(Json(ProjectRenderingsResponse::new(Vec::new())));
+    }
+
+    let images = image_repository.find_by_ids(&image_ids).await?;
+
+    let mut image_map = HashMap::new();
+    for image in images {
+        image_map.insert(image.id.clone(), image);
+    }
+
+    let mut responses = Vec::with_capacity(image_ids.len());
+    for image_id in image_ids {
+        if let Some(image) = image_map.get(&image_id) {
+            responses.push(ProjectRenderingImageResponse::from(image));
+        }
+    }
+
+    Ok(Json(ProjectRenderingsResponse::new(responses)))
 }
 
 pub async fn create_project_structure(
@@ -414,7 +447,9 @@ fn build_floor_structure_records(
             .ok_or_else(|| anyhow::anyhow!("floorplan {} missing rooms", floorplan.id))
             .map_err(ApiError::internal)?
             .len() as i32;
-
+        let archi_id = floorplan
+            .archi_id
+            .clone();
         let rectangularity = if bounding_box.area > 0.0 {
             area * 1_000_000.0 / bounding_box.area
         } else {
@@ -422,7 +457,7 @@ fn build_floor_structure_records(
         };
 
         records.push(FloorStructureRecord {
-            id: floorplan.id.clone(),
+            id: format!("{project_id}_{archi_id}"),
             title,
             project_id: project_id.to_string(),
             area,
@@ -461,8 +496,12 @@ fn build_room_structure_records(
                 0.0
             };
 
+            let archi_id = room
+            .archi_id
+            .clone();
+
             records.push(RoomStructureRecord {
-                id: room.archi_id.clone(),
+                id: format!("{project_id}_{archi_id}"),
                 project_id: project_id.to_string(),
                 r#type: room.r#type,
                 area: room.area,

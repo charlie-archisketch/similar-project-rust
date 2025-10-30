@@ -73,6 +73,9 @@ async fn main() -> anyhow::Result<()> {
     let project_repository = mongo
         .as_ref()
         .map(repositories::project_repository::ProjectRepository::new);
+    let image_repository = mongo
+        .as_ref()
+        .map(repositories::image_repository::ImageRepository::new);
     let floor_structure_repository = postgres
         .clone()
         .map(repositories::floor_structure_repository::FloorStructureRepository::new);
@@ -82,6 +85,7 @@ async fn main() -> anyhow::Result<()> {
 
     let state: AppState = AppState {
         project_repository,
+        image_repository,
         floor_structure_repository,
         room_structure_repository,
         s3_client,

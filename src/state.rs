@@ -5,7 +5,7 @@ use reqwest::Client as HttpClient;
 use crate::{
     error::ApiError,
     repositories::{
-        floor_structure_repository::FloorStructureRepository,
+        floor_structure_repository::FloorStructureRepository, image_repository::ImageRepository,
         project_repository::ProjectRepository, room_structure_repository::RoomStructureRepository,
     },
 };
@@ -13,6 +13,7 @@ use crate::{
 #[derive(Clone)]
 pub struct AppState {
     pub project_repository: Option<ProjectRepository>,
+    pub image_repository: Option<ImageRepository>,
     pub floor_structure_repository: Option<FloorStructureRepository>,
     pub room_structure_repository: Option<RoomStructureRepository>,
     pub s3_client: Option<S3Client>,
@@ -24,6 +25,12 @@ pub struct AppState {
 impl AppState {
     pub fn project_repository(&self) -> Result<&ProjectRepository, ApiError> {
         self.project_repository
+            .as_ref()
+            .ok_or_else(|| ApiError::internal(anyhow!("Mongo connection is not configured")))
+    }
+
+    pub fn image_repository(&self) -> Result<&ImageRepository, ApiError> {
+        self.image_repository
             .as_ref()
             .ok_or_else(|| ApiError::internal(anyhow!("Mongo connection is not configured")))
     }

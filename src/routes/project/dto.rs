@@ -1,3 +1,6 @@
 pub mod response;
 
-pub use response::{FloorResponse, ProjectResponse, RoomResponse};
+pub use response::{
+    FloorResponse, ProjectRenderingImageResponse, ProjectRenderingsResponse, ProjectResponse,
+    RoomResponse,
+};

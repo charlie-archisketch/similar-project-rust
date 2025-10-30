@@ -11,9 +11,12 @@ use serde::Deserialize;
 
 use crate::{
     error::ApiError,
-    models::project::{
-        Project,
-        child::{floorplan::Floorplan, structure::BoundingBox},
+    models::{
+        image::Image as ProjectImage,
+        project::{
+            Project,
+            child::{floorplan::Floorplan, structure::BoundingBox},
+        },
     },
     repositories::{
         floor_structure_repository::FloorStructureRecord, project_repository::ProjectRepository,
@@ -146,6 +149,7 @@ pub async fn get_similar_floors(
 
     let project_repository = state.project_repository()?;
     let floor_structure_repository = state.floor_structure_repository()?;
+    let image_repository = state.image_repository()?;
 
     let floor = floor_structure_repository
         .find_by_id(&floor_id)
@@ -204,16 +208,49 @@ pub async fn get_similar_floors(
         }
     }
 
+    let mut all_image_ids = Vec::new();
+    for project in project_map.values() {
+        if let Some(ids) = &project.image_ids {
+            all_image_ids.extend(ids.clone());
+        }
+    }
+    all_image_ids.sort();
+    all_image_ids.dedup();
+
+    let images = image_repository.find_by_ids(&all_image_ids).await?;
+    let mut image_map: HashMap<String, ProjectImage> = HashMap::new();
+    for image in images {
+        image_map.insert(image.id.clone(), image);
+    }
+
     let mut responses = Vec::with_capacity(similar_floors.len());
     for record in similar_floors {
         if let Some(project) = project_map.get(&record.project_id) {
-            let response = FloorResponse::try_from_project(project, &record.id, &record.title)
-                .map_err(ApiError::internal)?;
+            let response = FloorResponse::try_from_project(
+                project,
+                &record.id,
+                &record.title,
+                &state.cdn_base_url,
+                record.area,
+                &image_map,
+            )
+            .map_err(ApiError::internal)?;
             responses.push(response);
         }
     }
 
-    Ok(Json(responses))
+    let mut responses_with_images = Vec::with_capacity(responses.len());
+    let mut responses_without_images = Vec::new();
+    for response in responses {
+        if response.image_urls.is_empty() {
+            responses_without_images.push(response);
+        } else {
+            responses_with_images.push(response);
+        }
+    }
+    responses_with_images.extend(responses_without_images);
+
+    Ok(Json(responses_with_images))
 }
 
 pub async fn get_similar_rooms(
@@ -447,9 +484,7 @@ fn build_floor_structure_records(
             .ok_or_else(|| anyhow::anyhow!("floorplan {} missing rooms", floorplan.id))
             .map_err(ApiError::internal)?
             .len() as i32;
-        let archi_id = floorplan
-            .archi_id
-            .clone();
+        let archi_id = floorplan.archi_id.clone();
         let rectangularity = if bounding_box.area > 0.0 {
             area * 1_000_000.0 / bounding_box.area
         } else {
@@ -496,9 +531,7 @@ fn build_room_structure_records(
                 0.0
             };
 
-            let archi_id = room
-            .archi_id
-            .clone();
+            let archi_id = room.archi_id.clone();
 
             records.push(RoomStructureRecord {
                 id: format!("{project_id}_{archi_id}"),

@@ -23,6 +23,7 @@ pub struct SimilarFloor {
     pub id: String,
     pub title: String,
     pub project_id: String,
+    pub area: f64,
     pub score: f64,
 }
 
@@ -129,6 +130,10 @@ impl FloorStructureRepository {
             .column((floor_structure::Entity, FloorStructureColumn::Id))
             .column((floor_structure::Entity, FloorStructureColumn::Title))
             .column((floor_structure::Entity, FloorStructureColumn::ProjectId))
+            .expr_as(
+                Expr::col((floor_structure::Entity, FloorStructureColumn::Area)),
+                Alias::new("area"),
+            )
             .expr_as(score_expr.clone(), score_alias.clone())
             .from(floor_structure::Entity)
             .and_where(
@@ -174,11 +179,13 @@ impl FloorStructureRepository {
             .column((subquery_alias.clone(), Alias::new("id")))
             .column((subquery_alias.clone(), Alias::new("title")))
             .column((subquery_alias.clone(), Alias::new("project_id")))
+            .column((subquery_alias.clone(), Alias::new("area")))
             .column((subquery_alias.clone(), score_alias.clone()))
             .from_subquery(distinct_per_project, subquery_alias.clone())
             .order_by((subquery_alias.clone(), score_alias.clone()), Order::Asc)
             .order_by((subquery_alias.clone(), Alias::new("id")), Order::Asc)
-            .limit(k);
+            // .limit(k)
+            ;
 
         let backend: DatabaseBackend = self.db.get_database_backend();
         let stmt: Statement = backend.build(&ordered_select);

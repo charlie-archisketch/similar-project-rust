@@ -13,9 +13,7 @@ use crate::{
 
 pub fn router() -> Router<AppState> {
     Router::new()
-        .route("/projects/{project_id}", 
-        get(get_project_by_id)
-    )
+        .route("/projects/{project_id}", get(get_project_by_id))
         .route(
             "/projects/{project_id}/renderings",
             get(get_project_renderings),

@@ -143,7 +143,7 @@ impl RoomStructureRepository {
             );
         }
 
-        select.order_by(score_alias.clone(), Order::Asc).limit(k);
+        select.order_by(score_alias.clone(), Order::Asc);
 
         let backend: DatabaseBackend = self.db.get_database_backend();
         let stmt: Statement = backend.build(&select);

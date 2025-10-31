@@ -262,6 +262,7 @@ pub async fn get_similar_rooms(
 
     let project_repository = state.project_repository()?;
     let room_structure_repository = state.room_structure_repository()?;
+    let image_repository = state.image_repository()?;
 
     let room = room_structure_repository
         .find_by_id(&room_id)
@@ -320,16 +321,48 @@ pub async fn get_similar_rooms(
         }
     }
 
+    let mut all_image_ids = Vec::new();
+    for project in project_map.values() {
+        if let Some(ids) = &project.image_ids {
+            all_image_ids.extend(ids.clone());
+        }
+    }
+    all_image_ids.sort();
+    all_image_ids.dedup();
+
+    let images = image_repository.find_by_ids(&all_image_ids).await?;
+    let mut image_map: HashMap<String, ProjectImage> = HashMap::new();
+    for image in images {
+        image_map.insert(image.id.clone(), image);
+    }
+
     let mut responses = Vec::with_capacity(similar_rooms.len());
     for record in similar_rooms {
         if let Some(project) = project_map.get(&record.project_id) {
-            let response =
-                RoomResponse::try_from_project(project, &record.id).map_err(ApiError::internal)?;
+            let response = RoomResponse::try_from_project(
+                project,
+                &record.id,
+                &state.cdn_base_url,
+                record.area,
+                &image_map,
+            )
+            .map_err(ApiError::internal)?;
             responses.push(response);
         }
     }
 
-    Ok(Json(responses))
+    let mut responses_with_images = Vec::with_capacity(responses.len());
+    let mut responses_without_images = Vec::new();
+    for response in responses {
+        if response.image_urls.is_empty() {
+            responses_without_images.push(response);
+        } else {
+            responses_with_images.push(response);
+        }
+    }
+    responses_with_images.extend(responses_without_images);
+
+    Ok(Json(responses_with_images))
 }
 
 async fn populate_floorplans(

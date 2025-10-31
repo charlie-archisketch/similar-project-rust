@@ -20,6 +20,7 @@ pub struct RoomStructureRepository {
 pub struct SimilarRoom {
     pub id: String,
     pub project_id: String,
+    pub area: f64,
     pub score: f64,
 }
 
@@ -110,6 +111,7 @@ impl RoomStructureRepository {
         select
             .column((room_structure::Entity, RoomStructureColumn::Id))
             .column((room_structure::Entity, RoomStructureColumn::ProjectId))
+            .column((room_structure::Entity, RoomStructureColumn::Area))
             .expr_as(score_expr.clone(), score_alias.clone())
             .from(room_structure::Entity)
             .and_where(

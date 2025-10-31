@@ -81,6 +81,9 @@ pub struct RoomResponse {
     pub id: String,
     pub project_id: String,
     pub project_name: String,
+    pub area: f64,
+    #[serde(default)]
+    pub image_urls: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cover_image: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -95,18 +98,42 @@ pub struct RoomResponse {
 }
 
 impl RoomResponse {
-    pub fn try_from_project(project: &Project, id: &str) -> Result<Self> {
+    pub fn try_from_project(
+        project: &Project,
+        id: &str,
+        cdn_base_url: &str,
+        area: f64,
+        image_map: &HashMap<String, ProjectImage>,
+    ) -> Result<Self> {
         let project_id = project
             .id
             .clone()
             .ok_or_else(|| anyhow!("missing project id"))?;
         let created_at = project.created_at.as_ref().map(|dt| dt.to_chrono());
         let updated_at = project.updated_at.as_ref().map(|dt| dt.to_chrono());
+        let image_urls = project
+            .image_ids
+            .clone()
+            .unwrap_or_default()
+            .into_iter()
+            .filter_map(|image_id| {
+                image_map.get(&image_id).map(|image| {
+                    format!(
+                        "{}/images/{image_id}/{}x{}/{image_id}.png",
+                        cdn_base_url.trim_end_matches('/'),
+                        image.resolution.x,
+                        image.resolution.y
+                    )
+                })
+            })
+            .collect();
 
         Ok(Self {
             id: id.to_string(),
             project_id,
             project_name: project.name.clone().unwrap_or_default(),
+            area,
+            image_urls,
             cover_image: project.cover_image.clone(),
             default_cover_image: project.default_cover_image.clone(),
             user_id: project.user_id.clone(),

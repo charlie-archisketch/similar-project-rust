@@ -6,7 +6,7 @@ use axum::{
 use crate::{
     handlers::project_handler::{
         create_project_structure, create_recent_project_structures, get_project_by_id,
-        get_project_renderings, get_similar_floors, get_similar_rooms,
+        get_project_renderings, get_room_items, get_similar_floors, get_similar_rooms,
     },
     state::AppState,
 };
@@ -18,6 +18,7 @@ pub fn router() -> Router<AppState> {
             "/projects/{project_id}/renderings",
             get(get_project_renderings),
         )
+        .route("/projects/{room_key}/room-items", get(get_room_items))
         .route(
             "/projects/{floor_id}/similar-floor",
             get(get_similar_floors),

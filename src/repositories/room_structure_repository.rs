@@ -68,7 +68,7 @@ impl RoomStructureRepository {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub async fn find_top_k_similar_rooms(
+    pub async fn find_similar_rooms(
         &self,
         exclude_project_id: &str,
         area: f64,
@@ -77,12 +77,7 @@ impl RoomStructureRepository {
         rectangularity: f64,
         aspect_ri: f64,
         room_type: i32,
-        k: u64,
     ) -> Result<Vec<SimilarRoom>, ApiError> {
-        if k == 0 {
-            return Ok(Vec::new());
-        }
-
         let area_dist = Func::abs(
             Expr::col((room_structure::Entity, RoomStructureColumn::Area)).sub(Expr::value(area)),
         )

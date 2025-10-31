@@ -5,7 +5,10 @@ use axum::{
     http::StatusCode as AxumStatusCode,
 };
 use reqwest::{Client as HttpClient, StatusCode as HttpStatusCode};
-use std::{borrow::ToOwned, collections::HashMap};
+use std::{
+    borrow::ToOwned,
+    collections::{HashMap, HashSet},
+};
 
 use serde::Deserialize;
 
@@ -24,7 +27,7 @@ use crate::{
     },
     routes::project::dto::{
         FloorResponse, ProjectRenderingImageResponse, ProjectRenderingsResponse, ProjectResponse,
-        RoomResponse,
+        RoomItemsResponse, RoomResponse,
     },
     state::AppState,
 };
@@ -84,6 +87,70 @@ pub async fn get_project_renderings(
     }
 
     Ok(Json(ProjectRenderingsResponse::new(responses)))
+}
+
+pub async fn get_room_items(
+    State(state): State<AppState>,
+    Path(room_key): Path<String>,
+) -> Result<Json<RoomItemsResponse>, ApiError> {
+    let (project_id_raw, room_id) = room_key
+        .split_once('_')
+        .ok_or_else(|| ApiError::not_found(format!("invalid room identifier: {room_key}")))?;
+
+    if project_id_raw.is_empty() || room_id.is_empty() {
+        return Err(ApiError::not_found(format!(
+            "invalid room identifier: {room_key}"
+        )));
+    }
+
+    let project_repository = state.project_repository()?;
+    let mut project = project_repository.get_by_id(project_id_raw).await?;
+    populate_floorplans(&state.http_client, &state.cdn_base_url, &mut project).await?;
+
+    let Some((floorplan, room)) = project.floorplans.iter().find_map(|floorplan| {
+        floorplan.rooms.as_ref().and_then(|rooms| {
+            rooms
+                .iter()
+                .find(|room| room.archi_id == room_id)
+                .map(|room| (floorplan, room))
+        })
+    }) else {
+        return Err(ApiError::not_found(format!(
+            "room {room_id} not found in project {project_id_raw}"
+        )));
+    };
+
+    let room_item_ids: HashSet<String> = room
+        .items
+        .iter()
+        .filter_map(|item| item.archi_id.clone())
+        .collect();
+
+    let mut items = floorplan
+        .items
+        .as_ref()
+        .map(|items| {
+            items
+                .iter()
+                .filter(|item| {
+                    item.archi_id
+                        .as_ref()
+                        .map(|id| room_item_ids.contains(id))
+                        .unwrap_or(false)
+                })
+                .cloned()
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+
+    if items.is_empty() && !room.items.is_empty() {
+        items = room.items.clone();
+    }
+
+    let response = RoomItemsResponse::try_from_project_room(&project, floorplan, room, items)
+        .map_err(ApiError::internal)?;
+
+    Ok(Json(response))
 }
 
 pub async fn create_project_structure(
@@ -258,8 +325,6 @@ pub async fn get_similar_rooms(
     Path(room_id): Path<String>,
     Query(query): Query<AreaRangeQuery>,
 ) -> Result<Json<Vec<RoomResponse>>, ApiError> {
-    const SIMILAR_LIMIT: u64 = 10;
-
     let project_repository = state.project_repository()?;
     let room_structure_repository = state.room_structure_repository()?;
     let image_repository = state.image_repository()?;
@@ -279,7 +344,7 @@ pub async fn get_similar_rooms(
         .unwrap_or(room.area * 1.15);
 
     let similar_rooms = room_structure_repository
-        .find_top_k_similar_rooms(
+        .find_similar_rooms(
             &room.project_id,
             room.area,
             area_from,
@@ -287,7 +352,6 @@ pub async fn get_similar_rooms(
             room.rectangularity,
             room.bounding_box_aspect_ri,
             room.r#type,
-            SIMILAR_LIMIT,
         )
         .await?;
 

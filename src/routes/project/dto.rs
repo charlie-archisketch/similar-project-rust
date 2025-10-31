@@ -2,5 +2,5 @@ pub mod response;
 
 pub use response::{
     FloorResponse, ProjectRenderingImageResponse, ProjectRenderingsResponse, ProjectResponse,
-    RoomResponse,
+    RoomItemsResponse, RoomResponse,
 };

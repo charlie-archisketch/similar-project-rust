@@ -3,7 +3,13 @@ use chrono::{DateTime, Utc};
 use serde::Serialize;
 use std::collections::HashMap;
 
-use crate::models::{image::Image as ProjectImage, project::Project};
+use crate::models::{
+    image::Image as ProjectImage,
+    project::{
+        Project,
+        child::floorplan::{Floorplan, Item, Room},
+    },
+};
 use crate::utils::image::convert_image_url;
 
 #[derive(Debug, Serialize)]
@@ -256,4 +262,47 @@ impl From<&ProjectImage> for ProjectRenderingImageResponse {
 pub struct ProjectRenderingResolutionResponse {
     pub x: i32,
     pub y: i32,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RoomItemsResponse {
+    pub project_id: String,
+    pub floorplan_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub floorplan_title: Option<String>,
+    pub room_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub room_label: Option<String>,
+    #[serde(default)]
+    pub items: Vec<Item>,
+}
+
+impl RoomItemsResponse {
+    pub fn try_from_project_room(
+        project: &Project,
+        floorplan: &Floorplan,
+        room: &Room,
+        items: Vec<Item>,
+    ) -> Result<Self> {
+        let project_id = project
+            .id
+            .clone()
+            .ok_or_else(|| anyhow!("missing project id"))?;
+
+        let room_label = if room.label.trim().is_empty() {
+            None
+        } else {
+            Some(room.label.clone())
+        };
+
+        Ok(Self {
+            project_id,
+            floorplan_id: floorplan.id.clone(),
+            floorplan_title: floorplan.title.clone(),
+            room_id: room.archi_id.clone(),
+            room_label,
+            items,
+        })
+    }
 }

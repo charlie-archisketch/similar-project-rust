@@ -34,7 +34,6 @@ pub struct RoomStructureRecord {
     pub bounding_box_height: f64,
     pub bounding_box_area: f64,
     pub bounding_box_aspect: f64,
-    pub bounding_box_aspect_ri: f64,
     pub rectangularity: f64,
 }
 
@@ -49,7 +48,6 @@ impl From<RoomStructureRecord> for room_structure::ActiveModel {
             bounding_box_height: Set(record.bounding_box_height),
             bounding_box_area: Set(record.bounding_box_area),
             bounding_box_aspect: Set(record.bounding_box_aspect),
-            bounding_box_aspect_ri: Set(record.bounding_box_aspect_ri),
             rectangularity: Set(record.rectangularity),
         }
     }
@@ -75,7 +73,7 @@ impl RoomStructureRepository {
         area_from: f64,
         area_to: f64,
         rectangularity: f64,
-        aspect_ri: f64,
+        aspect: f64,
         room_type: i32,
     ) -> Result<Vec<SimilarRoom>, ApiError> {
         let area_dist = Func::abs(
@@ -85,9 +83,9 @@ impl RoomStructureRepository {
         let aspect_dist = Func::abs(
             Expr::col((
                 room_structure::Entity,
-                RoomStructureColumn::BoundingBoxAspectRi,
+                RoomStructureColumn::BoundingBoxAspect,
             ))
-            .sub(Expr::value(aspect_ri)),
+            .sub(Expr::value(aspect)),
         );
         let rectangularity_dist = Func::abs(
             Expr::col((room_structure::Entity, RoomStructureColumn::Rectangularity))
@@ -120,11 +118,11 @@ impl RoomStructureRepository {
             .and_where(
                 Expr::col((
                     room_structure::Entity,
-                    RoomStructureColumn::BoundingBoxAspectRi,
+                    RoomStructureColumn::BoundingBoxAspect,
                 ))
                 .between(
-                    Expr::value(aspect_ri * 0.85_f64),
-                    Expr::value(aspect_ri * 1.15_f64),
+                    Expr::value(aspect * 0.85_f64),
+                    Expr::value(aspect * 1.15_f64),
                 ),
             )
             .and_where(
@@ -169,7 +167,6 @@ impl RoomStructureRepository {
                             RoomStructureColumn::BoundingBoxHeight,
                             RoomStructureColumn::BoundingBoxArea,
                             RoomStructureColumn::BoundingBoxAspect,
-                            RoomStructureColumn::BoundingBoxAspectRi,
                             RoomStructureColumn::Rectangularity,
                         ])
                         .to_owned(),

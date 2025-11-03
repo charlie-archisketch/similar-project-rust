@@ -239,7 +239,7 @@ pub async fn get_similar_floors(
             floor.room_count,
             area_from,
             area_to,
-            floor.bounding_box_aspect_ri,
+            floor.bounding_box_aspect,
             floor.rectangularity,
             SIMILAR_LIMIT,
         )
@@ -350,7 +350,7 @@ pub async fn get_similar_rooms(
             area_from,
             area_to,
             room.rectangularity,
-            room.bounding_box_aspect_ri,
+            room.bounding_box_aspect,
             room.r#type,
         )
         .await?;
@@ -598,7 +598,6 @@ fn build_floor_structure_records(
             bounding_box_height: bounding_box.height,
             bounding_box_area: bounding_box.area,
             bounding_box_aspect: bounding_box.aspect,
-            bounding_box_aspect_ri: bounding_box.aspect_ri,
             rectangularity,
         });
     }
@@ -639,7 +638,6 @@ fn build_room_structure_records(
                 bounding_box_height: bounding_box.height,
                 bounding_box_area: bounding_box.area,
                 bounding_box_aspect: bounding_box.aspect,
-                bounding_box_aspect_ri: bounding_box.aspect_ri,
                 rectangularity,
             });
         }

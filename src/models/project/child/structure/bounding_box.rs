@@ -12,7 +12,6 @@ pub struct BoundingBox {
     pub height: f64,
     pub area: f64,
     pub aspect: f64,
-    pub aspect_ri: f64,
 }
 
 impl BoundingBox {
@@ -91,17 +90,10 @@ fn compute_bounding_box(points: &[&Transformation]) -> Result<BoundingBox> {
         f64::INFINITY
     };
 
-    let aspect_ri = if width != 0.0 && height != 0.0 {
-        width.max(height) / width.min(height)
-    } else {
-        f64::INFINITY
-    };
-
     Ok(BoundingBox {
         width,
         height,
         area,
         aspect,
-        aspect_ri,
     })
 }

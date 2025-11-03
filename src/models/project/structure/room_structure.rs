@@ -12,7 +12,6 @@ pub struct Model {
     pub bounding_box_height: f64,
     pub bounding_box_area: f64,
     pub bounding_box_aspect: f64,
-    pub bounding_box_aspect_ri: f64,
     pub rectangularity: f64,
 }
 

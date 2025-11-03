@@ -38,7 +38,6 @@ pub struct FloorStructureRecord {
     pub bounding_box_height: f64,
     pub bounding_box_area: f64,
     pub bounding_box_aspect: f64,
-    pub bounding_box_aspect_ri: f64,
     pub rectangularity: f64,
 }
 
@@ -54,7 +53,6 @@ impl From<FloorStructureRecord> for floor_structure::ActiveModel {
             bounding_box_height: Set(record.bounding_box_height),
             bounding_box_area: Set(record.bounding_box_area),
             bounding_box_aspect: Set(record.bounding_box_aspect),
-            bounding_box_aspect_ri: Set(record.bounding_box_aspect_ri),
             rectangularity: Set(record.rectangularity),
         }
     }
@@ -80,7 +78,7 @@ impl FloorStructureRepository {
         room_count: i32,
         area_from: f64,
         area_to: f64,
-        aspect_ri: f64,
+        aspect: f64,
         rectangularity: f64,
         k: u64,
     ) -> Result<Vec<SimilarFloor>, ApiError> {
@@ -95,9 +93,9 @@ impl FloorStructureRepository {
         let aspect_dist = Func::abs(
             Expr::col((
                 floor_structure::Entity,
-                FloorStructureColumn::BoundingBoxAspectRi,
+                FloorStructureColumn::BoundingBoxAspect,
             ))
-            .sub(Expr::value(aspect_ri)),
+            .sub(Expr::value(aspect)),
         );
         let rectangularity_dist = Func::abs(
             Expr::col((
@@ -145,14 +143,8 @@ impl FloorStructureRepository {
                     .between(Expr::value(area_from), Expr::value(area_to)),
             )
             .and_where(
-                Expr::col((
-                    floor_structure::Entity,
-                    FloorStructureColumn::BoundingBoxAspectRi,
-                ))
-                .between(
-                    Expr::value(aspect_ri * 0.85_f64),
-                    Expr::value(aspect_ri * 1.15_f64),
-                ),
+                Expr::col((floor_structure::Entity, FloorStructureColumn::BoundingBoxAspect,))
+                .between(Expr::value(aspect * 0.85_f64), Expr::value(aspect * 1.15_f64)),
             )
             .and_where(
                 Expr::col((
@@ -222,7 +214,6 @@ impl FloorStructureRepository {
                             FloorStructureColumn::BoundingBoxHeight,
                             FloorStructureColumn::BoundingBoxArea,
                             FloorStructureColumn::BoundingBoxAspect,
-                            FloorStructureColumn::BoundingBoxAspectRi,
                             FloorStructureColumn::Rectangularity,
                         ])
                         .to_owned(),

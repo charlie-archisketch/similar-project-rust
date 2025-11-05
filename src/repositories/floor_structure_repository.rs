@@ -35,7 +35,7 @@ pub struct FloorStructureRecord {
     pub area: f64,
     pub room_count: i32,
     pub bounding_box_width: f64,
-    pub bounding_box_height: f64,
+    pub bounding_box_depth: f64,
     pub bounding_box_area: f64,
     pub bounding_box_aspect: f64,
     pub rectangularity: f64,
@@ -50,7 +50,7 @@ impl From<FloorStructureRecord> for floor_structure::ActiveModel {
             area: Set(record.area),
             room_count: Set(record.room_count),
             bounding_box_width: Set(record.bounding_box_width),
-            bounding_box_height: Set(record.bounding_box_height),
+            bounding_box_depth: Set(record.bounding_box_depth),
             bounding_box_area: Set(record.bounding_box_area),
             bounding_box_aspect: Set(record.bounding_box_aspect),
             rectangularity: Set(record.rectangularity),
@@ -143,8 +143,14 @@ impl FloorStructureRepository {
                     .between(Expr::value(area_from), Expr::value(area_to)),
             )
             .and_where(
-                Expr::col((floor_structure::Entity, FloorStructureColumn::BoundingBoxAspect,))
-                .between(Expr::value(aspect * 0.85_f64), Expr::value(aspect * 1.15_f64)),
+                Expr::col((
+                    floor_structure::Entity,
+                    FloorStructureColumn::BoundingBoxAspect,
+                ))
+                .between(
+                    Expr::value(aspect * 0.85_f64),
+                    Expr::value(aspect * 1.15_f64),
+                ),
             )
             .and_where(
                 Expr::col((
@@ -211,7 +217,7 @@ impl FloorStructureRepository {
                             FloorStructureColumn::Area,
                             FloorStructureColumn::RoomCount,
                             FloorStructureColumn::BoundingBoxWidth,
-                            FloorStructureColumn::BoundingBoxHeight,
+                            FloorStructureColumn::BoundingBoxDepth,
                             FloorStructureColumn::BoundingBoxArea,
                             FloorStructureColumn::BoundingBoxAspect,
                             FloorStructureColumn::Rectangularity,
